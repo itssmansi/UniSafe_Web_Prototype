@@ -8,8 +8,10 @@
    - All features, pages, and components must be developed in **isolated files and modules** (e.g., `frontend/src/components/<Feature>/`, `frontend/src/pages/<FeaturePage>.jsx`, `frontend/src/services/`, etc.).
 
 2. **Branch & Commit Rules**:
-   - **Default branch for general work**: Commit **ONLY and ONLY in branch `pranav`**.
-   - **Heatmap feature work**: When working on the heatmap feature, commit **in branch `heatmap`**.
+   - **Branch**: Commit **ONLY and ONLY in branch `pranav/map-kanban`**.
+   - **Feature Ownership**: Pranav owns **Interactive Map + Kanban + Complaints**.
+   - **Mansi owns**: Heatmap (`mansi/heatmap`) — DO NOT touch.
+   - **Seana owns**: Auth & Users (`seana/auth`) — DO NOT touch.
    - **NEVER commit directly to `main`**.
 
 3. **Architecture & Stack**:
