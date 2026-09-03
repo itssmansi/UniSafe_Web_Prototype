@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet default marker icon issue in React
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -11,7 +10,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Create custom category icons based on the UI screenshot
 const createCategoryIcon = (color, svgPath) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="12" fill="${color}"/><path d="${svgPath}" fill="white" transform="scale(0.6) translate(8, 8)"/></svg>`;
   return L.divIcon({
@@ -29,15 +27,70 @@ const CATEGORIES = [
   { id: 'greenery', name: 'Greenery', color: '#10B981', icon: 'M4 11a9 9 0 019 9M3 21l18-18M21 11a9 9 0 00-9-9' }
 ];
 
-export default function InteractiveMap({ onBack }) {
-  const [position, setPosition] = useState([19.1136, 72.8397]); // Mumbai Coordinates matching the image vaguely
+const categoryIcons = CATEGORIES.reduce((acc, cat) => {
+  acc[cat.id] = createCategoryIcon(cat.color, cat.icon);
+  return acc;
+}, {});
+
+function MapController({ onMapClick, searchLocation, myLocation }) {
+  const map = useMapEvents({
+    click(e) {
+      if (onMapClick) onMapClick(e.latlng);
+    },
+  });
+
+  useEffect(() => {
+    if (searchLocation) {
+      map.flyTo([searchLocation.lat, searchLocation.lon], 16);
+    }
+  }, [searchLocation, map]);
+  
+  useEffect(() => {
+    if (myLocation) {
+      map.flyTo([myLocation.lat, myLocation.lng], 16);
+    }
+  }, [myLocation, map]);
+
+  return null;
+}
+
+export default function InteractiveMap({ onBack, complaints = [], onMapClick, onMarkerClick }) {
+  const [position, setPosition] = useState([28.6139, 77.2090]); // Default to Delhi based on mock data
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLocation, setSearchLocation] = useState(null);
+  const [myLocation, setMyLocation] = useState(null);
+
+  // Simple debounced Nominatim search
+  useEffect(() => {
+    if (searchQuery.length < 4) return;
+    const timeout = setTimeout(() => {
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${searchQuery}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.length > 0) {
+            setSearchLocation(data[0]);
+          }
+        });
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const handleLocateMe = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => alert("Location access denied or failed.")
+      );
+    }
+  };
 
   return (
     <div className="relative w-full h-screen font-sans bg-gray-100">
-      {/* Map Container */}
       <MapContainer 
         center={position} 
-        zoom={16} 
+        zoom={14} 
         className="w-full h-full z-0"
         zoomControl={false}
       >
@@ -46,13 +99,32 @@ export default function InteractiveMap({ onBack }) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {/* Mock Marker representing the blue dot in the screenshot */}
-        <Marker position={position}>
-          <Popup>Selected Location</Popup>
-        </Marker>
+        <MapController 
+          onMapClick={onMapClick} 
+          searchLocation={searchLocation}
+          myLocation={myLocation}
+        />
+        
+        {myLocation && (
+          <Marker position={myLocation}>
+            <Popup>Your Location</Popup>
+          </Marker>
+        )}
+
+        {complaints.map(c => (
+          <Marker 
+            key={c.id} 
+            position={[c.latitude, c.longitude]}
+            icon={categoryIcons[c.category] || categoryIcons.infrastructure}
+            eventHandlers={{
+              click: () => onMarkerClick && onMarkerClick(c)
+            }}
+          >
+          </Marker>
+        ))}
       </MapContainer>
 
-      {/* Top Search Bar UI overlay */}
+      {/* Top Search Bar */}
       <div className="absolute top-4 left-4 right-4 z-[400] flex gap-3 pointer-events-none">
         <button 
           onClick={onBack}
@@ -69,6 +141,8 @@ export default function InteractiveMap({ onBack }) {
           </svg>
           <input 
             type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search anywhere..." 
             className="flex-1 bg-transparent border-none outline-none text-gray-700 font-medium placeholder-gray-400"
           />
@@ -82,7 +156,7 @@ export default function InteractiveMap({ onBack }) {
         </div>
         <div className="bg-white/95 backdrop-blur-md rounded-full shadow-lg px-6 py-3 flex gap-6 pointer-events-auto">
           {CATEGORIES.map(cat => (
-            <div key={cat.id} className="flex flex-col items-center gap-1 cursor-pointer group">
+            <div key={cat.id} onClick={() => onMapClick && onMapClick({lat: 28.6139, lng: 77.2090})} className="flex flex-col items-center gap-1 cursor-pointer group">
               <div 
                 className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-110"
                 style={{ backgroundColor: cat.color }}
@@ -104,7 +178,7 @@ export default function InteractiveMap({ onBack }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
         </button>
-        <button className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-blue-600 hover:bg-gray-50 pointer-events-auto">
+        <button onClick={handleLocateMe} className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-blue-600 hover:bg-gray-50 pointer-events-auto">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
