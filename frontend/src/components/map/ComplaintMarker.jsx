@@ -1,93 +1,62 @@
 import React from 'react';
-
-// Status styling
-const statusColors = {
-  pending: {
-    bg: 'bg-amber-500',
-    border: 'border-amber-300',
-    ring: 'ring-amber-400/30',
-    text: 'text-amber-600',
-    label: 'Pending',
-  },
-  in_progress: {
-    bg: 'bg-blue-600',
-    border: 'border-blue-300',
-    ring: 'ring-blue-400/30',
-    text: 'text-blue-600',
-    label: 'In Progress',
-  },
-  resolved: {
-    bg: 'bg-emerald-600',
-    border: 'border-emerald-300',
-    ring: 'ring-emerald-400/30',
-    text: 'text-emerald-600',
-    label: 'Resolved',
-  },
-};
-
-// Severity badge styling
-const severityStyles = {
-  low: 'bg-slate-100 text-slate-700 border-slate-200',
-  medium: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  high: 'bg-orange-50 text-orange-700 border-orange-200',
-  critical: 'bg-red-50 text-red-700 border-red-200 animate-pulse',
-};
-
-// Category icon helper
-const getCategoryIcon = (category) => {
-  switch (category?.toLowerCase()) {
-    case 'streetlight':
-      return '💡';
-    case 'pothole':
-      return '🕳️';
-    case 'garbage':
-      return '🗑️';
-    case 'water leak':
-      return '💧';
-    case 'safety':
-      return '🚨';
-    default:
-      return '📍';
-  }
-};
+import { ISSUE_CATEGORIES } from '../../services/complaintService';
 
 export default function ComplaintMarker({ complaint, isSelected, onClick }) {
-  const status = statusColors[complaint.status] || statusColors.pending;
-  const icon = getCategoryIcon(complaint.category);
+  const categoryInfo = ISSUE_CATEGORIES[complaint.category] || ISSUE_CATEGORIES.infrastructure;
+  const pinColor = categoryInfo.color;
+  const glowColor = categoryInfo.glowColor;
 
   return (
-    <button
-      type="button"
-      onClick={() => onClick(complaint)}
-      className={`group relative flex flex-col items-center transition-all duration-200 transform -translate-x-1/2 -translate-y-full hover:scale-110 focus:outline-none ${
-        isSelected ? 'scale-125 z-30' : 'z-10'
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onClick) onClick(complaint);
+      }}
+      className={`relative cursor-pointer transition-transform duration-200 group transform -translate-x-1/2 -translate-y-full ${
+        isSelected ? 'scale-125 z-40' : 'hover:scale-115 z-20'
       }`}
-      title={`${complaint.category}: ${complaint.description}`}
+      title={`${complaint.title} (${categoryInfo.label})`}
     >
       {/* Tooltip on hover */}
-      <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center whitespace-nowrap z-40">
-        <div className="bg-slate-900 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-xl flex items-center gap-2">
-          <span className="font-semibold">{complaint.category}</span>
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-            complaint.severity === 'critical' ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-200'
-          }`}>
-            {complaint.severity}
+      <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none whitespace-nowrap z-50">
+        <div className="bg-slate-900/95 text-white text-xs px-3 py-1.5 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-2">
+          <span className="font-bold">{categoryInfo.icon} {complaint.subcategory || categoryInfo.label}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase bg-slate-800 text-slate-300">
+            ▲ {complaint.upvote_count || 1}
           </span>
         </div>
         <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1" />
       </div>
 
-      {/* Pin Body */}
+      {/* Teardrop Pin Shape ported directly from Flutter MapPinShape */}
       <div
-        className={`w-9 h-9 rounded-full ${status.bg} border-2 ${status.border} shadow-lg flex items-center justify-center text-base text-white ring-4 ${status.ring}`}
+        className="flex items-center justify-center transition-all duration-300"
+        style={{
+          width: '42px',
+          height: '42px',
+          transform: 'rotate(45deg)',
+          backgroundColor: pinColor,
+          borderRadius: '24px 24px 4px 24px', // Flutter teardrop radius
+          border: isSelected ? '3px solid #F59E0B' : '2.5px solid #FFFFFF',
+          boxShadow: `0 4px 14px ${glowColor}, 0 2px 6px rgba(0,0,0,0.3)`,
+        }}
       >
-        <span>{icon}</span>
+        {/* Counter-rotate icon inside by -45deg so it stays upright */}
+        <span
+          className="text-base select-none"
+          style={{ transform: 'rotate(-45deg)', color: '#ffffff' }}
+        >
+          {categoryInfo.icon}
+        </span>
       </div>
 
-      {/* Pin pointer tip */}
-      <div className={`w-2.5 h-2.5 ${status.bg} rotate-45 -mt-1 rounded-sm shadow-sm`} />
-    </button>
+      {/* Pulse effect if selected or urgent */}
+      {isSelected && (
+        <span
+          className="absolute -inset-1 rounded-full animate-ping opacity-40 pointer-events-none"
+          style={{ backgroundColor: pinColor }}
+        />
+      )}
+    </div>
   );
 }
-
-export { statusColors, severityStyles, getCategoryIcon };

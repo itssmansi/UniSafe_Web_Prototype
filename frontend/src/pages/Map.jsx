@@ -1,26 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { complaintService } from '../services/complaintService';
+import { complaintService, ISSUE_CATEGORIES } from '../services/complaintService';
 import InteractiveMap from '../components/map/InteractiveMap';
 import ComplaintDetails from '../components/map/ComplaintDetails';
 import ComplaintModal from '../components/map/ComplaintModal';
-import AssignmentModal from '../components/kanban/AssignmentModal';
-
-const CATEGORIES = ['All', 'Streetlight', 'Pothole', 'Garbage', 'Water Leak', 'Safety'];
 
 export default function MapPage() {
   const [complaints, setComplaints] = useState([]);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [assigningComplaint, setAssigningComplaint] = useState(null);
-  const [clickedCoords, setClickedCoords] = useState(null);
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [pinnedCoords, setPinnedCoords] = useState({ lat: 28.6139, lng: 77.2090 });
+  const [hiddenCategories, setHiddenCategories] = useState(new Set());
 
-  // Subscribe to complaints service for live sync
+  // Subscribe to live complaints
   useEffect(() => {
     const unsubscribe = complaintService.subscribe((data) => {
       setComplaints(data);
-      // Keep selected complaint in sync
       if (selectedComplaint) {
         const updated = data.find((c) => c.id === selectedComplaint.id);
         setSelectedComplaint(updated || null);
@@ -29,87 +23,93 @@ export default function MapPage() {
     return unsubscribe;
   }, [selectedComplaint]);
 
-  // Handle map click to drop pin & open report modal
+  // Handle map click to pin & open report modal
   const handleMapClick = (coords) => {
-    setClickedCoords(coords);
-    setSelectedComplaint(null);
+    setPinnedCoords(coords);
     setIsReportModalOpen(true);
   };
 
-  // Submit new complaint
-  const handleCreateComplaint = async (formData) => {
-    await complaintService.createComplaint(formData);
+  // Submit report
+  const handleCreateReport = async (data) => {
+    await complaintService.createComplaint(data);
     setIsReportModalOpen(false);
   };
 
-  // Quick status transition from drawer
+  // Update status
   const handleStatusChange = async (id, newStatus) => {
     await complaintService.updateComplaintStatus(id, newStatus);
   };
 
-  // Assign authority from modal
-  const handleAssignSubmit = async (complaintId, authorityId, department) => {
-    await complaintService.assignComplaint(complaintId, authorityId, department);
-    setAssigningComplaint(null);
+  // Upvote
+  const handleUpvote = async (id) => {
+    await complaintService.upvoteComplaint(id);
   };
 
-  // Filter complaints
-  const filteredComplaints = complaints.filter((c) => {
-    const matchCat = categoryFilter === 'All' || c.category?.toLowerCase() === categoryFilter.toLowerCase();
-    const matchStatus = statusFilter === 'All' || c.status?.toLowerCase() === statusFilter.toLowerCase();
-    return matchCat && matchStatus;
-  });
-
-  // Calculate quick stats
-  const totalCount = complaints.length;
-  const pendingCount = complaints.filter((c) => c.status === 'pending').length;
-  const inProgressCount = complaints.filter((c) => c.status === 'in_progress').length;
-  const resolvedCount = complaints.filter((c) => c.status === 'resolved').length;
+  // Toggle category visibility
+  const toggleCategory = (catKey) => {
+    setHiddenCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(catKey)) {
+        next.delete(catKey);
+      } else {
+        next.add(catKey);
+      }
+      return next;
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       {/* Top Header & Metrics Bar */}
-      <header className="bg-slate-950/80 border-b border-slate-800 backdrop-blur-md px-6 py-4 sticky top-0 z-30">
+      <header className="bg-slate-900/90 border-b border-slate-800 backdrop-blur-md px-6 py-3.5 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-2xl">🗺️</span>
               <h1 className="text-2xl font-black tracking-tight text-white">
-                UniSafe <span className="text-blue-500 font-medium text-lg">Civic Map</span>
+                UniSafe <span className="text-blue-500 font-semibold text-lg">Interactive Map</span>
               </h1>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Live geo-spatial tracking of campus & municipal complaints
+              Community civic issue reporting & live resolution tracking
             </p>
           </div>
 
-          {/* Quick Metrics Pills */}
-          <div className="flex items-center gap-2 flex-wrap text-xs">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 flex items-center gap-2">
-              <span className="text-slate-400">Total:</span>
-              <span className="font-bold text-white">{totalCount}</span>
-            </div>
-            <div className="bg-amber-950/40 border border-amber-800/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-amber-300">
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
-              <span>Pending:</span>
-              <span className="font-bold">{pendingCount}</span>
-            </div>
-            <div className="bg-blue-950/40 border border-blue-800/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-blue-300">
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              <span>In Progress:</span>
-              <span className="font-bold">{inProgressCount}</span>
-            </div>
-            <div className="bg-emerald-950/40 border border-emerald-800/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>Resolved:</span>
-              <span className="font-bold">{resolvedCount}</span>
-            </div>
+          {/* Category Filter Chips (Ported from Flutter kCategoryStyles) */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {Object.entries(ISSUE_CATEGORIES).map(([key, cat]) => {
+              const isHidden = hiddenCategories.has(key);
+              const count = complaints.filter((c) => c.category === key).length;
+
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleCategory(key)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border shadow-sm ${
+                    isHidden
+                      ? 'bg-slate-800 border-slate-700 text-slate-500 line-through opacity-60'
+                      : 'text-white'
+                  }`}
+                  style={{
+                    backgroundColor: isHidden ? undefined : cat.color,
+                    borderColor: isHidden ? undefined : cat.color,
+                  }}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                  <span className="bg-black/25 px-1.5 py-0.2 rounded-full text-[10px] font-extrabold">
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
 
             {/* Main Action Button */}
             <button
               type="button"
               onClick={() => {
-                setClickedCoords({ lat: 19.0760, lng: 72.8777 });
+                setPinnedCoords({ lat: 28.6139, lng: 77.2090 });
                 setIsReportModalOpen(true);
               }}
               className="ml-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-lg shadow-blue-600/30 transition flex items-center gap-1.5"
@@ -118,86 +118,38 @@ export default function MapPage() {
             </button>
           </div>
         </div>
-
-        {/* Filter Controls Row */}
-        <div className="max-w-7xl mx-auto mt-4 pt-3 border-t border-slate-800/80 flex items-center gap-4 flex-wrap text-xs">
-          <div className="flex items-center gap-1.5 text-slate-400 font-medium">
-            <span>Filter by:</span>
-          </div>
-
-          {/* Category Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setCategoryFilter(cat)}
-                className={`px-3 py-1 rounded-lg transition font-medium ${
-                  categoryFilter === cat
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Status Dropdown */}
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-slate-400">Status:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="All">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-            </select>
-          </div>
-        </div>
       </header>
 
-      {/* Main Map Viewport */}
+      {/* Main Map Content Area */}
       <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full relative">
         <InteractiveMap
-          complaints={filteredComplaints}
+          complaints={complaints}
           selectedComplaint={selectedComplaint}
           onSelectComplaint={(complaint) => setSelectedComplaint(complaint)}
           onMapClick={handleMapClick}
+          hiddenCategories={hiddenCategories}
         />
 
-        {/* Floating Complaint Details Drawer/Card */}
+        {/* Selected Complaint Floating Details Drawer */}
         {selectedComplaint && (
-          <div className="absolute top-8 right-8 z-30 max-w-sm w-full animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute top-8 right-8 z-40 max-w-sm w-full animate-in fade-in zoom-in-95 duration-150">
             <ComplaintDetails
               complaint={selectedComplaint}
               onClose={() => setSelectedComplaint(null)}
               onStatusChange={handleStatusChange}
-              onOpenAssign={(c) => setAssigningComplaint(c)}
+              onUpvote={handleUpvote}
             />
           </div>
         )}
       </main>
 
-      {/* Citizen Report Modal */}
+      {/* Report Modal */}
       <ComplaintModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
-        onSubmit={handleCreateComplaint}
-        defaultCoords={clickedCoords || { lat: 19.0760, lng: 72.8777 }}
+        onSubmit={handleCreateReport}
+        defaultCoords={pinnedCoords}
       />
-
-      {/* Authority Assignment Modal */}
-      {assigningComplaint && (
-        <AssignmentModal
-          complaint={assigningComplaint}
-          onClose={() => setAssigningComplaint(null)}
-          onAssign={handleAssignSubmit}
-        />
-      )}
     </div>
   );
 }

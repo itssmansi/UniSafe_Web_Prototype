@@ -1,25 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { complaintService } from '../services/complaintService';
+import { complaintService, ISSUE_CATEGORIES } from '../services/complaintService';
 import KanbanBoard from '../components/kanban/KanbanBoard';
-import AssignmentModal from '../components/kanban/AssignmentModal';
+import KanbanTaskModal from '../components/kanban/KanbanTaskModal';
 import ComplaintDetails from '../components/map/ComplaintDetails';
-
-const DEPARTMENTS = [
-  'All Departments',
-  'Road Maintenance & Infrastructure',
-  'Electrical & Streetlight Division',
-  'Sanitation & Solid Waste Management',
-  'Water Supply & Sewage Board',
-  'Campus Quick Response Unit',
-];
 
 export default function KanbanPage() {
   const [complaints, setComplaints] = useState([]);
-  const [assigningComplaint, setAssigningComplaint] = useState(null);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [targetColumnId, setTargetColumnId] = useState('planned');
   const [searchQuery, setSearchQuery] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('All Departments');
-  const [severityFilter, setSeverityFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [isMobileGrid, setIsMobileGrid] = useState(false);
 
   // Live synchronization via complaintService
   useEffect(() => {
@@ -33,125 +25,135 @@ export default function KanbanPage() {
     return unsubscribe;
   }, [selectedComplaint]);
 
-  // Status transition handler
   const handleStatusChange = async (id, newStatus) => {
     await complaintService.updateComplaintStatus(id, newStatus);
   };
 
-  // Department assignment handler
-  const handleAssignSubmit = async (complaintId, authorityId, department) => {
-    await complaintService.assignComplaint(complaintId, authorityId, department);
-    setAssigningComplaint(null);
+  const handleCreateTask = async (taskData) => {
+    await complaintService.createComplaint(taskData);
+    setIsTaskModalOpen(false);
   };
 
-  // Filter complaints based on search query, department, and severity
+  const handleOpenAddTask = (columnId = 'planned') => {
+    setTargetColumnId(columnId);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleUpvote = async (id) => {
+    await complaintService.upvoteComplaint(id);
+  };
+
+  // Filter complaints
   const filteredComplaints = complaints.filter((c) => {
     const matchSearch =
+      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.id.toLowerCase().includes(searchQuery.toLowerCase());
+      (c.subcategory && c.subcategory.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchDept =
-      departmentFilter === 'All Departments' ||
-      (c.assigned_department &&
-        c.assigned_department.toLowerCase() === departmentFilter.toLowerCase());
+    const matchCategory =
+      categoryFilter === 'all' || c.category?.toLowerCase() === categoryFilter.toLowerCase();
 
-    const matchSeverity =
-      severityFilter === 'All' || c.severity.toLowerCase() === severityFilter.toLowerCase();
-
-    return matchSearch && matchDept && matchSeverity;
+    return matchSearch && matchCategory;
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      {/* Top Header & Metrics Bar */}
-      <header className="bg-slate-900/80 border-b border-slate-800 backdrop-blur-md px-6 py-4 sticky top-0 z-30">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
+      {/* AppBar Ported from Flutter KanbanBoardScreen */}
+      <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">📋</span>
-              <h1 className="text-2xl font-black tracking-tight text-white">
-                UniSafe <span className="text-blue-500 font-medium text-lg">Authority Kanban</span>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📋</span>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 leading-tight">
+                UniSafe <span className="text-blue-600 font-semibold text-base">Kanban Board</span>
               </h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                AppFlowy-style workflow triage across municipal authority columns
+              </p>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Triage, assign, and track lifecycle of campus civic complaints
-            </p>
           </div>
 
-          {/* Search & Filters */}
-          <div className="flex items-center gap-3 flex-wrap">
+          {/* Search, Filter & Layout Toggles */}
+          <div className="flex items-center gap-2.5 flex-wrap">
             {/* Search Input */}
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-slate-500">🔍</span>
+              <span className="absolute left-3 top-2 text-xs text-slate-400">🔍</span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search issues, IDs..."
-                className="bg-slate-800 border border-slate-700 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-48 sm:w-60"
+                placeholder="Search tasks..."
+                className="bg-slate-100 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-40 sm:w-52"
               />
             </div>
 
-            {/* Department Filter */}
+            {/* Category Filter */}
             <select
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="bg-slate-100 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium"
             >
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
+              <option value="all">All Categories</option>
+              {Object.entries(ISSUE_CATEGORIES).map(([key, cat]) => (
+                <option key={key} value={key}>
+                  {cat.icon} {cat.label}
                 </option>
               ))}
             </select>
 
-            {/* Severity Filter */}
-            <select
-              value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
-              className="bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+            {/* Grid vs Board Layout Toggle (Ported from Flutter _buildMobileGrid / _buildDesktopBoard) */}
+            <button
+              type="button"
+              onClick={() => setIsMobileGrid(!isMobileGrid)}
+              className={`p-2 rounded-xl border text-xs font-semibold transition ${
+                isMobileGrid
+                  ? 'bg-blue-50 border-blue-300 text-blue-700'
+                  : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+              }`}
+              title="Toggle 2x2 Grid View"
             >
-              <option value="All">All Severities</option>
-              <option value="critical">Critical Only</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+              {isMobileGrid ? '📱 2x2 Grid' : '🖥️ Board'}
+            </button>
+
+            {/* Add Task Primary Action */}
+            <button
+              type="button"
+              onClick={() => handleOpenAddTask('planned')}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5"
+            >
+              <span>+</span> Add Task
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Kanban Content Area */}
+      {/* Main Kanban Board Canvas */}
       <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
         <KanbanBoard
           complaints={filteredComplaints}
           onStatusChange={handleStatusChange}
-          onOpenAssign={(c) => setAssigningComplaint(c)}
-          onSelectComplaint={(c) => setSelectedComplaint(c)}
+          onOpenAddTask={handleOpenAddTask}
+          onSelectComplaint={(task) => setSelectedComplaint(task)}
+          isMobileGrid={isMobileGrid}
         />
       </main>
 
-      {/* Assignment Modal */}
-      {assigningComplaint && (
-        <AssignmentModal
-          complaint={assigningComplaint}
-          onClose={() => setAssigningComplaint(null)}
-          onAssign={handleAssignSubmit}
-        />
-      )}
+      {/* Add Task Modal */}
+      <KanbanTaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        defaultColumnId={targetColumnId}
+        onSubmit={handleCreateTask}
+      />
 
-      {/* Complaint Details Modal (on card click) */}
+      {/* Task Details Dialog on Card Click */}
       {selectedComplaint && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
           <ComplaintDetails
             complaint={selectedComplaint}
             onClose={() => setSelectedComplaint(null)}
             onStatusChange={handleStatusChange}
-            onOpenAssign={(c) => {
-              setSelectedComplaint(null);
-              setAssigningComplaint(c);
-            }}
+            onUpvote={handleUpvote}
           />
         </div>
       )}

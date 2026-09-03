@@ -1,113 +1,231 @@
-// Complaint Service (Pranav's Domain)
-// Structured according to Supabase schema defined in AGENT.md
+// Centralized Category Identity ported from Flutter:
+// C:\projects\Unisafe\flutter_app\lib\screens\heatmap_ui\map_screen.dart
+
+export const ISSUE_CATEGORIES = {
+  infrastructure: {
+    id: 'infrastructure',
+    label: 'Infrastructure',
+    color: '#FF6B6B',
+    glowColor: 'rgba(255, 107, 107, 0.45)',
+    icon: '🏗️',
+    subcategories: [
+      'Nonfunctional street lights',
+      'Potholes',
+      'Water logging',
+      'Prolonged road work',
+      'Drainage',
+      'Other',
+    ],
+  },
+  sanitation: {
+    id: 'sanitation',
+    label: 'Sanitation',
+    color: '#F9A826',
+    glowColor: 'rgba(249, 168, 38, 0.45)',
+    icon: '🗑️',
+    subcategories: [
+      'Garbage scattered on the road',
+      'Public washrooms not clean',
+      'Garbage beach/river',
+      'Untimely garbage collection/overflowing',
+      'Other',
+    ],
+  },
+  safety: {
+    id: 'safety',
+    label: 'Safety',
+    color: '#4D96FF',
+    glowColor: 'rgba(77, 150, 255, 0.45)',
+    icon: '🛡️',
+    subcategories: [
+      'Open manholes',
+      'Non existent footpath',
+      'Women safety',
+      'Illegal parking',
+      'Theft / Robbery',
+      'Harassment / Eve-Teasing',
+      'Assault / Violence',
+      'Poor Street Lighting',
+      'Fire Hazard',
+      'Electrical Hazard',
+      'Exposed Wires',
+      'Child Safety Concern',
+      'Stray Animal Threat',
+      'Other',
+    ],
+  },
+  greenery: {
+    id: 'greenery',
+    label: 'Greenery',
+    color: '#4CAF50',
+    glowColor: 'rgba(76, 175, 80, 0.45)',
+    icon: '🌿',
+    subcategories: [
+      'Waste Dumping in Green Area',
+      'Poor Landscape Maintenance',
+      'Watering Required for Plants',
+      'Encroachment on Green Spaces',
+      'Pest or Insect Infestation',
+      'Overgrown Vegetation',
+      'Need Tree Plantation',
+      'Illegal Tree Cutting',
+      'Public problems on greenery',
+      'Other',
+    ],
+  },
+};
+
+// 4 Columns ported from Flutter:
+// C:\projects\Unisafe\flutter_app\lib\screens\kanban_board_ui\kanban_board_screen.dart
+export const KANBAN_COLUMNS = [
+  { id: 'planned', name: 'Planned', color: '#6B7280' },
+  { id: 'in_progress', name: 'In Progress', color: '#F59E0B' },
+  { id: 'in_review', name: 'In Review', color: '#3B82F6' },
+  { id: 'done', name: 'Done', color: '#10B981' },
+];
 
 let listeners = [];
 
-// Seed mock complaints so the Map and Kanban are immediately functional
+// Seed complaints matching schema.sql + map_screen.dart + kanban_board_screen.dart
 let mockComplaints = [
   {
-    id: "c-101",
-    citizen_id: "cit-01",
-    citizen_name: "Rahul Sharma",
-    category: "Streetlight",
-    description: "Main road streetlights have been flickering and went completely dark near Sector 4 junction.",
-    latitude: 19.0760,
-    longitude: 72.8777,
-    severity: "medium", // 'low' | 'medium' | 'high' | 'critical'
-    status: "pending",   // 'pending' | 'in_progress' | 'resolved'
-    assigned_authority_id: null,
-    assigned_department: null,
-    original_photo_url: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=60",
-    resolution_photo_url: null,
-    created_at: new Date(Date.now() - 3600 * 1000 * 5).toISOString(),
-    updated_at: new Date(Date.now() - 3600 * 1000 * 5).toISOString(),
+    id: 'rep-001',
+    title: 'Hazardous Potholes at Main Junction',
+    category: 'infrastructure',
+    subcategory: 'Potholes',
+    description: 'Deep potholes causing severe bike skids near the university south gate.',
+    latitude: 28.6139,
+    longitude: 77.2090,
+    address: 'South Gate Corridor, University Main Road',
+    image_url: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600&auto=format&fit=crop&q=60',
+    status: 'planned',
+    upvote_count: 14,
+    owner: {
+      name: 'Amit Deshmukh',
+      image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=60',
+    },
+    start_date: new Date(Date.now() - 86400000 * 2).toISOString(),
+    end_date: new Date(Date.now() + 86400000 * 3).toISOString(),
+    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
   {
-    id: "c-102",
-    citizen_id: "cit-02",
-    citizen_name: "Priya Patel",
-    category: "Pothole",
-    description: "Deep pothole causing bike skids right in front of the community center entrance.",
-    latitude: 19.0820,
-    longitude: 72.8850,
-    severity: "critical",
-    status: "in_progress",
-    assigned_authority_id: "auth-101",
-    assigned_department: "Road Maintenance Dept",
-    original_photo_url: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600&auto=format&fit=crop&q=60",
-    resolution_photo_url: null,
-    created_at: new Date(Date.now() - 3600 * 1000 * 18).toISOString(),
-    updated_at: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
+    id: 'rep-002',
+    title: 'Nonfunctional Streetlights Behind Library',
+    category: 'infrastructure',
+    subcategory: 'Nonfunctional street lights',
+    description: 'Pathway is pitch dark after 7:30 PM, creating major security concerns for students.',
+    latitude: 28.6210,
+    longitude: 77.2150,
+    address: 'Library Lane, Central Campus',
+    image_url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=60',
+    status: 'in_progress',
+    upvote_count: 28,
+    owner: {
+      name: 'Rohan Verma',
+      image: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120&auto=format&fit=crop&q=60',
+    },
+    start_date: new Date(Date.now() - 86400000 * 1).toISOString(),
+    end_date: new Date(Date.now() + 86400000 * 1).toISOString(),
+    created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
   },
   {
-    id: "c-103",
-    citizen_id: "cit-03",
-    citizen_name: "Amit Verma",
-    category: "Garbage",
-    description: "Unattended municipal garbage dump overflowing onto the sidewalk.",
-    latitude: 19.0680,
-    longitude: 72.8690,
-    severity: "high",
-    status: "pending",
-    assigned_authority_id: null,
-    assigned_department: null,
-    original_photo_url: "https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=600&auto=format&fit=crop&q=60",
-    resolution_photo_url: null,
-    created_at: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
-    updated_at: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
+    id: 'rep-003',
+    title: 'Garbage Dump Overflowing Near Cafeteria',
+    category: 'sanitation',
+    subcategory: 'Untimely garbage collection/overflowing',
+    description: 'Bins have not been emptied for 4 days. Waste is spilling onto the pedestrian pathway.',
+    latitude: 28.6080,
+    longitude: 77.2020,
+    address: 'Cafeteria Block 3, North Yard',
+    image_url: 'https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=600&auto=format&fit=crop&q=60',
+    status: 'in_review',
+    upvote_count: 9,
+    owner: {
+      name: 'Pooja Nair',
+      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=60',
+    },
+    start_date: new Date(Date.now() - 86400000 * 2).toISOString(),
+    end_date: new Date(Date.now() + 86400000 * 1).toISOString(),
+    created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
   },
   {
-    id: "c-104",
-    citizen_id: "cit-04",
-    citizen_name: "Sneha Nair",
-    category: "Water Leak",
-    description: "Pipeline burst near the public park causing heavy water accumulation.",
-    latitude: 19.0910,
-    longitude: 72.8920,
-    severity: "high",
-    status: "resolved",
-    assigned_authority_id: "auth-102",
-    assigned_department: "Water & Sewage Board",
-    original_photo_url: "https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?w=600&auto=format&fit=crop&q=60",
-    resolution_photo_url: "https://images.unsplash.com/photo-1584467735815-f778f274e296?w=600&auto=format&fit=crop&q=60",
-    created_at: new Date(Date.now() - 3600 * 1000 * 48).toISOString(),
-    updated_at: new Date(Date.now() - 3600 * 1000 * 6).toISOString(),
+    id: 'rep-004',
+    title: 'Exposed Electrical Wires Near Playground',
+    category: 'safety',
+    subcategory: 'Exposed Wires',
+    description: 'High voltage wire hanging low from junction box near the kids park.',
+    latitude: 28.6250,
+    longitude: 77.2220,
+    address: 'Campus Recreation Park',
+    image_url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?w=600&auto=format&fit=crop&q=60',
+    status: 'in_progress',
+    upvote_count: 42,
+    owner: {
+      name: 'Kunal Sharma',
+      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=60',
+    },
+    start_date: new Date(Date.now() - 86400000 * 1).toISOString(),
+    end_date: new Date(Date.now() + 86400000 * 2).toISOString(),
+    created_at: new Date(Date.now() - 86400000 * 1).toISOString(),
+  },
+  {
+    id: 'rep-005',
+    title: 'Waste Dumping in Botanical Garden',
+    category: 'greenery',
+    subcategory: 'Waste Dumping in Green Area',
+    description: 'Plastic debris and construction gravel dumped into flowerbeds.',
+    latitude: 28.6180,
+    longitude: 77.1980,
+    address: 'Botanical Garden Sector B',
+    image_url: 'https://images.unsplash.com/photo-1584467735815-f778f274e296?w=600&auto=format&fit=crop&q=60',
+    status: 'done',
+    upvote_count: 19,
+    owner: {
+      name: 'Ananya Gupta',
+      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&auto=format&fit=crop&q=60',
+    },
+    start_date: new Date(Date.now() - 86400000 * 5).toISOString(),
+    end_date: new Date(Date.now() - 86400000 * 1).toISOString(),
+    created_at: new Date(Date.now() - 86400000 * 6).toISOString(),
   },
 ];
 
 function notify() {
-  listeners.forEach((listener) => listener([...mockComplaints]));
+  listeners.forEach((fn) => fn([...mockComplaints]));
 }
 
 export const complaintService = {
-  // Get all complaints
   async getComplaints() {
     return [...mockComplaints];
   },
 
-  // Get single complaint by ID
   async getComplaintById(id) {
     return mockComplaints.find((c) => c.id === id) || null;
   },
 
-  // Create new complaint (Citizen action)
   async createComplaint(data) {
+    const categoryInfo = ISSUE_CATEGORIES[data.category] || ISSUE_CATEGORIES.infrastructure;
     const newComplaint = {
-      id: `c-${Date.now().toString().slice(-4)}`,
-      citizen_id: data.citizen_id || "guest-citizen",
-      citizen_name: data.citizen_name || "Anonymous Citizen",
-      category: data.category || "General",
-      description: data.description || "",
-      latitude: parseFloat(data.latitude) || 19.0760,
-      longitude: parseFloat(data.longitude) || 72.8777,
-      severity: data.severity || "medium",
-      status: "pending",
-      assigned_authority_id: null,
-      assigned_department: null,
-      original_photo_url: data.original_photo_url || "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=60",
-      resolution_photo_url: null,
+      id: `rep-${Date.now().toString().slice(-4)}`,
+      title: data.title || `${data.subcategory || categoryInfo.label} Report`,
+      category: data.category || 'infrastructure',
+      subcategory: data.subcategory || categoryInfo.subcategories[0],
+      description: data.description || '',
+      latitude: parseFloat(data.latitude) || 28.6139,
+      longitude: parseFloat(data.longitude) || 77.2090,
+      address: data.address || 'Selected Map Location',
+      image_url:
+        data.image_url ||
+        'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600&auto=format&fit=crop&q=60',
+      status: data.status || 'planned',
+      upvote_count: 1,
+      owner: data.owner || {
+        name: 'Pranav (You)',
+        image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=60',
+      },
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 86400000 * 3).toISOString(),
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
     mockComplaints = [newComplaint, ...mockComplaints];
@@ -115,14 +233,12 @@ export const complaintService = {
     return newComplaint;
   },
 
-  // Update status (Authority action)
-  async updateComplaintStatus(id, newStatus, resolutionPhotoUrl = null) {
+  async updateComplaintStatus(id, newStatus) {
     mockComplaints = mockComplaints.map((c) => {
       if (c.id === id) {
         return {
           ...c,
           status: newStatus,
-          resolution_photo_url: resolutionPhotoUrl || c.resolution_photo_url,
           updated_at: new Date().toISOString(),
         };
       }
@@ -132,17 +248,10 @@ export const complaintService = {
     return mockComplaints.find((c) => c.id === id);
   },
 
-  // Assign Authority/Department
-  async assignComplaint(id, authorityId, department) {
+  async upvoteComplaint(id) {
     mockComplaints = mockComplaints.map((c) => {
       if (c.id === id) {
-        return {
-          ...c,
-          assigned_authority_id: authorityId,
-          assigned_department: department,
-          status: c.status === "pending" ? "in_progress" : c.status,
-          updated_at: new Date().toISOString(),
-        };
+        return { ...c, upvote_count: (c.upvote_count || 0) + 1 };
       }
       return c;
     });
@@ -150,7 +259,6 @@ export const complaintService = {
     return mockComplaints.find((c) => c.id === id);
   },
 
-  // Subscribe to live updates
   subscribe(listener) {
     listeners.push(listener);
     listener([...mockComplaints]);
