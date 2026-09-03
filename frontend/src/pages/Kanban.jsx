@@ -5,7 +5,7 @@ import {
   KanbanCards,
   KanbanHeader,
   KanbanProvider,
-} from "../components/kibo-ui/kanban";
+} from "../components/kb";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { complaintService } from "../services/complaintService";
 
@@ -44,6 +44,22 @@ export default function KanbanPage({ onBack }) {
     return unsubscribe;
   }, []);
 
+  const handleDataChange = (newData) => {
+    // Find which item changed columns by comparing with current features state
+    const changedItem = newData.find(item => {
+      const oldItem = features.find(f => f.id === item.id);
+      return oldItem && oldItem.column !== item.column;
+    });
+
+    // Update local state for immediate feedback
+    setFeatures(newData);
+
+    // Persist to database
+    if (changedItem) {
+      complaintService.updateComplaintStatus(changedItem.id, changedItem.column);
+    }
+  };
+
   return (
     <div className="h-screen bg-[#0E0E0E] flex flex-col font-sans overflow-hidden text-white">
       {/* App Bar */}
@@ -61,7 +77,7 @@ export default function KanbanPage({ onBack }) {
         <KanbanProvider
           columns={columns}
           data={features}
-          onDataChange={setFeatures}
+          onDataChange={handleDataChange}
         >
           {(column) => (
             <KanbanBoard id={column.id} key={column.id}>
