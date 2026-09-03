@@ -5,53 +5,45 @@ import MapPage from './pages/Map';
 import KanbanPage from './pages/Kanban';
 
 function DevPreview() {
-  const [activeTab, setActiveTab] = useState('map'); // 'map' | 'kanban'
+  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'map' | 'kanban'
+
+  if (activeTab === 'map') {
+    return <MapPage onBack={() => setActiveTab('home')} />;
+  }
+
+  if (activeTab === 'kanban') {
+    return <KanbanPage onBack={() => setActiveTab('home')} />;
+  }
 
   return (
-    <div className="min-h-screen flex flex-col font-sans">
-      {/* Dev Switcher Banner */}
-      <nav className="bg-slate-900 border-b border-slate-800 text-white px-6 py-2.5 flex items-center justify-between z-50 sticky top-0 shadow-lg">
-        <div className="flex items-center gap-3">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-bold text-xs uppercase tracking-wider text-slate-300">
-            Pranav's Scope Dev Sandbox
-          </span>
-          <span className="text-slate-600 hidden sm:inline">•</span>
-          <span className="text-[11px] text-slate-400 hidden sm:inline">
-            Testing independently without modifying shared <code className="text-amber-400">App.jsx</code>
-          </span>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
-          <button
-            type="button"
-            onClick={() => setActiveTab('map')}
-            className={`px-3.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-              activeTab === 'map'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>🗺️</span> Interactive Map
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('kanban')}
-            className={`px-3.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-              activeTab === 'kanban'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>📋</span> Kanban Board
-          </button>
-        </div>
+    <div className="min-h-screen flex flex-col bg-[#F9FAFB] font-sans">
+      {/* App Bar matching Flutter */}
+      <nav className="bg-white px-4 py-3 flex items-center shadow-sm">
+        <h1 className="text-xl font-medium text-gray-800">UniSafe Home</h1>
       </nav>
 
-      {/* Render Active View */}
-      <div className="flex-1">
-        {activeTab === 'map' ? <MapPage /> : <KanbanPage />}
+      {/* Centered Buttons */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-4">
+        <button
+          type="button"
+          onClick={() => setActiveTab('map')}
+          className="flex items-center gap-2 px-6 py-2.5 bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#1E3A8A] font-medium rounded-full transition shadow-sm border border-gray-200"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          Open Heatmap
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('kanban')}
+          className="flex items-center gap-2 px-6 py-2.5 bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#1E3A8A] font-medium rounded-full transition shadow-sm border border-gray-200"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+          </svg>
+          Open Kanban Board
+        </button>
       </div>
     </div>
   );

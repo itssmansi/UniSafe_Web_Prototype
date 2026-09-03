@@ -1,162 +1,125 @@
-import React, { useState, useEffect } from 'react';
-import { complaintService, ISSUE_CATEGORIES } from '../services/complaintService';
-import KanbanBoard from '../components/kanban/KanbanBoard';
-import KanbanTaskModal from '../components/kanban/KanbanTaskModal';
-import ComplaintDetails from '../components/map/ComplaintDetails';
+import React from 'react';
 
-export default function KanbanPage() {
-  const [complaints, setComplaints] = useState([]);
-  const [selectedComplaint, setSelectedComplaint] = useState(null);
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [targetColumnId, setTargetColumnId] = useState('planned');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [isMobileGrid, setIsMobileGrid] = useState(false);
+const mockTasks = [
+  { id: '1', title: 'Assistant Corporate Secretary', dates: 'Dec 4 - Dec 9, 2023', status: 'Planned' },
+  { id: '2', title: 'Regional Manager', dates: 'Aug 17 - Sep 19, 2023', status: 'Planned' },
+  { id: '3', title: 'Regional Consultant', dates: 'Jan 27 - Feb 19, 2023', status: 'Planned' },
+  { id: '4', title: 'Associate Consultant', dates: 'May 24 - Jun 25, 2023', status: 'Planned' },
+  { id: '5', title: 'Executive Secretary', dates: 'Jul 15 - Aug 3, 2023', status: 'Planned' },
+  { id: '6', title: 'IT Secretary', dates: 'Sep 13 - Nov 3, 2023', status: 'Planned' },
+  { id: '7', title: 'Executive Manager', dates: 'Dec 1 - Dec 10, 2023', status: 'Planned' },
+  
+  { id: '8', title: 'Operations Manager', dates: 'Sep 26 - Nov 8, 2023', status: 'In Progress' },
+  
+  { id: '9', title: 'Executive Manager', dates: 'Jul 25 - Aug 1, 2023', status: 'In Review' },
+  { id: '10', title: 'Assistant President', dates: 'May 19 - Jun 29, 2023', status: 'In Review' },
+  { id: '11', title: 'General President', dates: 'Apr 28 - Jun 17, 2023', status: 'In Review' },
+  { id: '12', title: 'Executive Consultant', dates: 'Apr 8 - May 3, 2023', status: 'In Review' },
+  
+  { id: '13', title: 'Executive Consultant', dates: 'Jun 16 - Aug 9, 2023', status: 'Done' },
+  { id: '14', title: 'Associate Division Secretary', dates: 'Dec 24 - Feb 18, 2024', status: 'Done' },
+  { id: '15', title: 'Operations Secretary', dates: 'Sep 7 - Oct 2, 2023', status: 'Done' },
+  { id: '16', title: 'Assistant Consultant', dates: 'Jun 18 - Jun 28, 2023', status: 'Done' },
+  { id: '17', title: 'General Department Director', dates: 'Jun 10 - Jun 27, 2023', status: 'Done' },
+  { id: '18', title: 'Assistant Department Consultant', dates: 'Jun 12 - Jul 7, 2023', status: 'Done' }
+];
 
-  // Live synchronization via complaintService
-  useEffect(() => {
-    const unsubscribe = complaintService.subscribe((data) => {
-      setComplaints(data);
-      if (selectedComplaint) {
-        const updated = data.find((c) => c.id === selectedComplaint.id);
-        setSelectedComplaint(updated || null);
-      }
-    });
-    return unsubscribe;
-  }, [selectedComplaint]);
+const COLUMNS = [
+  { 
+    id: 'Planned', 
+    name: 'Planned', 
+    count: 9, 
+    bgColor: 'bg-gray-100', 
+    dotColor: 'bg-gray-500',
+    textColor: 'text-gray-800'
+  },
+  { 
+    id: 'In Progress', 
+    name: 'In Progress', 
+    count: 1, 
+    bgColor: 'bg-yellow-50', 
+    dotColor: 'bg-yellow-500',
+    textColor: 'text-gray-800'
+  },
+  { 
+    id: 'In Review', 
+    name: 'In Review', 
+    count: 4, 
+    bgColor: 'bg-blue-50', 
+    dotColor: 'bg-blue-500',
+    textColor: 'text-gray-800'
+  },
+  { 
+    id: 'Done', 
+    name: 'Done', 
+    count: 6, 
+    bgColor: 'bg-green-50', 
+    dotColor: 'bg-green-500',
+    textColor: 'text-gray-800'
+  }
+];
 
-  const handleStatusChange = async (id, newStatus) => {
-    await complaintService.updateComplaintStatus(id, newStatus);
-  };
-
-  const handleCreateTask = async (taskData) => {
-    await complaintService.createComplaint(taskData);
-    setIsTaskModalOpen(false);
-  };
-
-  const handleOpenAddTask = (columnId = 'planned') => {
-    setTargetColumnId(columnId);
-    setIsTaskModalOpen(true);
-  };
-
-  const handleUpvote = async (id) => {
-    await complaintService.upvoteComplaint(id);
-  };
-
-  // Filter complaints
-  const filteredComplaints = complaints.filter((c) => {
-    const matchSearch =
-      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.subcategory && c.subcategory.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    const matchCategory =
-      categoryFilter === 'all' || c.category?.toLowerCase() === categoryFilter.toLowerCase();
-
-    return matchSearch && matchCategory;
-  });
-
+export default function KanbanPage({ onBack }) {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
-      {/* AppBar Ported from Flutter KanbanBoardScreen */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">📋</span>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 leading-tight">
-                UniSafe <span className="text-blue-600 font-semibold text-base">Kanban Board</span>
-              </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                AppFlowy-style workflow triage across municipal authority columns
-              </p>
-            </div>
-          </div>
-
-          {/* Search, Filter & Layout Toggles */}
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Search Input */}
-            <div className="relative">
-              <span className="absolute left-3 top-2 text-xs text-slate-400">🔍</span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search tasks..."
-                className="bg-slate-100 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-40 sm:w-52"
-              />
-            </div>
-
-            {/* Category Filter */}
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="bg-slate-100 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium"
-            >
-              <option value="all">All Categories</option>
-              {Object.entries(ISSUE_CATEGORIES).map(([key, cat]) => (
-                <option key={key} value={key}>
-                  {cat.icon} {cat.label}
-                </option>
-              ))}
-            </select>
-
-            {/* Grid vs Board Layout Toggle (Ported from Flutter _buildMobileGrid / _buildDesktopBoard) */}
-            <button
-              type="button"
-              onClick={() => setIsMobileGrid(!isMobileGrid)}
-              className={`p-2 rounded-xl border text-xs font-semibold transition ${
-                isMobileGrid
-                  ? 'bg-blue-50 border-blue-300 text-blue-700'
-                  : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
-              }`}
-              title="Toggle 2x2 Grid View"
-            >
-              {isMobileGrid ? '📱 2x2 Grid' : '🖥️ Board'}
-            </button>
-
-            {/* Add Task Primary Action */}
-            <button
-              type="button"
-              onClick={() => handleOpenAddTask('planned')}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5"
-            >
-              <span>+</span> Add Task
-            </button>
-          </div>
-        </div>
+    <div className="h-screen bg-[#F9FAFB] flex flex-col font-sans overflow-hidden">
+      {/* App Bar */}
+      <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center shadow-sm z-10 flex-shrink-0">
+        <button 
+          onClick={onBack}
+          className="mr-4 p-1 rounded hover:bg-gray-100 text-gray-700"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </button>
+        <h1 className="text-lg font-medium text-gray-900">Kanban Board</h1>
       </header>
 
-      {/* Main Kanban Board Canvas */}
-      <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
-        <KanbanBoard
-          complaints={filteredComplaints}
-          onStatusChange={handleStatusChange}
-          onOpenAddTask={handleOpenAddTask}
-          onSelectComplaint={(task) => setSelectedComplaint(task)}
-          isMobileGrid={isMobileGrid}
-        />
-      </main>
+      {/* Board Scroll Container */}
+      <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
+        <div className="flex gap-6 h-full min-w-max items-start">
+          {COLUMNS.map(col => {
+            const colTasks = mockTasks.filter(t => t.status === col.id);
+            return (
+              <div key={col.id} className="w-[320px] h-full flex flex-col flex-shrink-0">
+                {/* Column Header */}
+                <div className={lex items-center justify-between px-4 py-3 rounded-t-xl rounded-b-xl mb-4 \}>
+                  <div className="flex items-center gap-2">
+                    <div className={w-2 h-2 rounded-full \}></div>
+                    <span className={ont-semibold text-sm \}>{col.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-white text-gray-500 text-[11px] font-medium px-2 py-0.5 rounded-full shadow-sm">
+                      {col.count}
+                    </span>
+                    <button className="bg-white text-blue-500 rounded p-0.5 shadow-sm hover:bg-blue-50">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
 
-      {/* Add Task Modal */}
-      <KanbanTaskModal
-        isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
-        defaultColumnId={targetColumnId}
-        onSubmit={handleCreateTask}
-      />
-
-      {/* Task Details Dialog on Card Click */}
-      {selectedComplaint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <ComplaintDetails
-            complaint={selectedComplaint}
-            onClose={() => setSelectedComplaint(null)}
-            onStatusChange={handleStatusChange}
-            onUpvote={handleUpvote}
-          />
+                {/* Cards Container */}
+                <div className="flex-1 overflow-y-auto pr-1 pb-4 flex flex-col gap-3 custom-scrollbar">
+                  {colTasks.map(task => (
+                    <div 
+                      key={task.id} 
+                      className="bg-white p-4 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] border border-gray-50 hover:shadow-md transition-shadow cursor-pointer flex justify-between"
+                    >
+                      <div className="flex flex-col gap-3">
+                        <h3 className="text-[13px] font-medium text-gray-800 leading-snug">{task.title}</h3>
+                        <span className="text-[11px] text-gray-400">{task.dates}</span>
+                      </div>
+                      <div className="w-6 h-6 rounded-full bg-gray-100 border border-gray-200 mt-auto ml-2 flex-shrink-0"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 }
