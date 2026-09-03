@@ -46,6 +46,7 @@ type KanbanItemProps = {
 type KanbanColumnProps = {
   id: string;
   name: string;
+  color?: string;
 } & Record<string, unknown>;
 
 type KanbanContextProps<
@@ -77,8 +78,8 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
   return (
     <div
       className={cn(
-        "flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40 text-sm shadow-lg transition-colors duration-200",
-        isOver ? "bg-zinc-800/60 ring-2 ring-zinc-700 ring-offset-2 ring-offset-zinc-950" : "",
+        "flex w-[300px] shrink-0 self-start flex-col rounded-xl border border-[#2a2a2c] bg-[#1c1c1e] text-sm shadow-sm transition-all",
+        isOver ? "ring-2 ring-neutral-500/50" : "",
         className
       )}
       ref={setNodeRef}
@@ -118,26 +119,26 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
 
   return (
     <>
-      <div style={style} {...listeners} {...attributes} ref={setNodeRef} className="pb-1 outline-none">
+      <div style={style} {...listeners} {...attributes} ref={setNodeRef} className="outline-none">
         <Card
           className={cn(
-            "cursor-grab rounded-xl p-4 shadow-sm border border-zinc-700/60 bg-zinc-800 hover:border-zinc-500 hover:bg-zinc-700/80 transition-all duration-200",
-            isDragging && "pointer-events-none cursor-grabbing opacity-40 scale-105 shadow-2xl border-zinc-500",
+            "cursor-grab rounded-lg p-3.5 shadow-sm border border-[#262628] bg-[#141415] hover:border-[#3a3a3e] transition-colors",
+            isDragging && "pointer-events-none cursor-grabbing opacity-30",
             className
           )}
         >
-          {children ?? <p className="m-0 font-medium text-sm text-zinc-100">{name}</p>}
+          {children ?? <p className="m-0 font-medium text-sm text-white">{name}</p>}
         </Card>
       </div>
       {activeCardId === id && (
         <t.In>
           <Card
             className={cn(
-              "cursor-grabbing rounded-xl p-4 shadow-2xl border border-zinc-500 bg-zinc-700/90 scale-105 rotate-1 transition-none",
+              "cursor-grabbing rounded-lg p-3.5 shadow-2xl border border-neutral-600 bg-[#18181a] ring-2 ring-neutral-500/40",
               className
             )}
           >
-            {children ?? <p className="m-0 font-medium text-sm text-zinc-100">{name}</p>}
+            {children ?? <p className="m-0 font-medium text-sm text-white">{name}</p>}
           </Card>
         </t.In>
       )}
@@ -161,10 +162,10 @@ export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
   const items = filteredData.map((item) => item.id);
 
   return (
-    <ScrollArea className="flex-1 overflow-y-auto">
+    <ScrollArea className="overflow-visible">
       <SortableContext items={items}>
         <div
-          className={cn("flex flex-col gap-3 p-4", className)}
+          className={cn("flex flex-col gap-2.5 px-3 pb-3 pt-1", className)}
           {...props}
         >
           {filteredData.map(children)}
@@ -178,7 +179,7 @@ export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
 export type KanbanHeaderProps = HTMLAttributes<HTMLDivElement>;
 
 export const KanbanHeader = ({ className, ...props }: KanbanHeaderProps) => (
-  <div className={cn("m-0 px-5 py-4 font-semibold text-[15px] border-b border-zinc-800/80 bg-zinc-900/80 shadow-sm z-10 flex items-center justify-between", className)} {...props} />
+  <div className={cn("px-4 pt-4 pb-2.5 font-medium text-sm text-white flex items-center", className)} {...props} />
 );
 
 export type KanbanProviderProps<
@@ -292,24 +293,20 @@ export const KanbanProvider = <
   const announcements: Announcements = {
     onDragStart({ active }) {
       const { name, column } = data.find((item) => item.id === active.id) ?? {};
-
       return `Picked up the card "${name}" from the "${column}" column`;
     },
     onDragOver({ active, over }) {
       const { name } = data.find((item) => item.id === active.id) ?? {};
       const newColumn = columns.find((column) => column.id === over?.id)?.name;
-
       return `Dragged the card "${name}" over the "${newColumn}" column`;
     },
     onDragEnd({ active, over }) {
       const { name } = data.find((item) => item.id === active.id) ?? {};
       const newColumn = columns.find((column) => column.id === over?.id)?.name;
-
       return `Dropped the card "${name}" into the "${newColumn}" column`;
     },
     onDragCancel({ active }) {
       const { name } = data.find((item) => item.id === active.id) ?? {};
-
       return `Cancelled dragging the card "${name}"`;
     },
   };
@@ -327,7 +324,7 @@ export const KanbanProvider = <
       >
         <div
           className={cn(
-            "flex h-full gap-6 w-full items-start overflow-x-auto pb-4",
+            "flex gap-4 items-start",
             className
           )}
         >
@@ -336,7 +333,7 @@ export const KanbanProvider = <
         {typeof window !== "undefined" &&
           createPortal(
             <DragOverlay dropAnimation={{
-              duration: 250,
+              duration: 200,
               easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
             }}>
               <t.Out />

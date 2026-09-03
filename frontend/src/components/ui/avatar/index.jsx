@@ -8,14 +8,14 @@ export function Avatar({ className, children }) {
   );
 }
 
-export function AvatarImage({ src, alt }) {
+export function AvatarImage({ src, alt, className }) {
   if (!src) return null;
-  return <img src={src} alt={alt || "Avatar"} className="aspect-square h-full w-full object-cover" />;
+  return <img src={src} alt={alt || "Avatar"} className={`aspect-square h-full w-full object-cover rounded-full ${className || ''}`} />;
 }
 
-export function AvatarFallback({ children }) {
+export function AvatarFallback({ children, className }) {
   return (
-    <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-100 text-gray-800 text-[10px] font-medium uppercase">
+    <div className={`flex h-full w-full items-center justify-center rounded-full bg-[#2a2a2e] text-neutral-300 text-[10px] font-medium uppercase ${className || ''}`}>
       {children}
     </div>
   );
