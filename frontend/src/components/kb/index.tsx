@@ -77,8 +77,8 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
   return (
     <div
       className={cn(
-        "flex size-full min-h-40 flex-col divide-y overflow-hidden rounded-md border bg-secondary text-xs shadow-sm ring-2 transition-all",
-        isOver ? "ring-primary" : "ring-transparent",
+        "flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40 text-sm shadow-lg transition-colors duration-200",
+        isOver ? "bg-zinc-800/60 ring-2 ring-zinc-700 ring-offset-2 ring-offset-zinc-950" : "",
         className
       )}
       ref={setNodeRef}
@@ -118,27 +118,26 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
 
   return (
     <>
-      <div style={style} {...listeners} {...attributes} ref={setNodeRef}>
+      <div style={style} {...listeners} {...attributes} ref={setNodeRef} className="pb-1 outline-none">
         <Card
           className={cn(
-            "cursor-grab gap-4 rounded-md p-3 shadow-sm",
-            isDragging && "pointer-events-none cursor-grabbing opacity-30",
+            "cursor-grab rounded-xl p-4 shadow-sm border border-zinc-700/60 bg-zinc-800 hover:border-zinc-500 hover:bg-zinc-700/80 transition-all duration-200",
+            isDragging && "pointer-events-none cursor-grabbing opacity-40 scale-105 shadow-2xl border-zinc-500",
             className
           )}
         >
-          {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
+          {children ?? <p className="m-0 font-medium text-sm text-zinc-100">{name}</p>}
         </Card>
       </div>
       {activeCardId === id && (
         <t.In>
           <Card
             className={cn(
-              "cursor-grab gap-4 rounded-md p-3 shadow-sm ring-2 ring-primary",
-              isDragging && "cursor-grabbing",
+              "cursor-grabbing rounded-xl p-4 shadow-2xl border border-zinc-500 bg-zinc-700/90 scale-105 rotate-1 transition-none",
               className
             )}
           >
-            {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
+            {children ?? <p className="m-0 font-medium text-sm text-zinc-100">{name}</p>}
           </Card>
         </t.In>
       )}
@@ -162,10 +161,10 @@ export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
   const items = filteredData.map((item) => item.id);
 
   return (
-    <ScrollArea className="overflow-hidden">
+    <ScrollArea className="flex-1 overflow-y-auto">
       <SortableContext items={items}>
         <div
-          className={cn("flex flex-grow flex-col gap-2 p-2", className)}
+          className={cn("flex flex-col gap-3 p-4", className)}
           {...props}
         >
           {filteredData.map(children)}
@@ -179,7 +178,7 @@ export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
 export type KanbanHeaderProps = HTMLAttributes<HTMLDivElement>;
 
 export const KanbanHeader = ({ className, ...props }: KanbanHeaderProps) => (
-  <div className={cn("m-0 p-2 font-semibold text-sm", className)} {...props} />
+  <div className={cn("m-0 px-5 py-4 font-semibold text-[15px] border-b border-zinc-800/80 bg-zinc-900/80 shadow-sm z-10 flex items-center justify-between", className)} {...props} />
 );
 
 export type KanbanProviderProps<
@@ -213,8 +212,17 @@ export const KanbanProvider = <
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(MouseSensor),
-    useSensor(TouchSensor),
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 5,
+      }
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      }
+    }),
     useSensor(KeyboardSensor)
   );
 
@@ -319,7 +327,7 @@ export const KanbanProvider = <
       >
         <div
           className={cn(
-            "grid size-full auto-cols-fr grid-flow-col gap-4",
+            "flex h-full gap-6 w-full items-start overflow-x-auto pb-4",
             className
           )}
         >
@@ -327,7 +335,10 @@ export const KanbanProvider = <
         </div>
         {typeof window !== "undefined" &&
           createPortal(
-            <DragOverlay>
+            <DragOverlay dropAnimation={{
+              duration: 250,
+              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+            }}>
               <t.Out />
             </DragOverlay>,
             document.body
