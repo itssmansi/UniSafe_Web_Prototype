@@ -12,13 +12,10 @@ export function KanbanProvider({ columns, data, onDataChange, children }) {
     e.preventDefault();
     const itemId = e.dataTransfer.getData('text/plain');
     if (itemId) {
-      // Instantly update the parent state for snappy UI
       const updatedData = data.map(item =>
         item.id === itemId ? { ...item, column: columnId } : item
       );
       if (onDataChange) onDataChange(updatedData);
-
-      // Persist the change to our mock database
       await complaintService.updateComplaintStatus(itemId, columnId);
     }
   };
@@ -27,7 +24,7 @@ export function KanbanProvider({ columns, data, onDataChange, children }) {
 
   return (
     <KanbanContext.Provider value={{ data, handleDragStart, handleDrop, handleDragOver }}>
-      <div className="flex gap-6 h-full min-w-max items-start">
+      <div className="flex gap-4 h-full min-w-max items-start">
         {columns.map(col => children(col))}
       </div>
     </KanbanContext.Provider>
@@ -38,7 +35,7 @@ export function KanbanBoard({ id, children }) {
   const { handleDrop, handleDragOver } = useContext(KanbanContext);
   return (
     <div
-      className="w-[320px] h-full flex flex-col flex-shrink-0"
+      className="w-[280px] h-full flex flex-col flex-shrink-0 bg-[#232323] rounded-lg border border-[#333333] overflow-hidden"
       onDragOver={handleDragOver}
       onDrop={(e) => handleDrop(e, id)}
     >
@@ -49,7 +46,7 @@ export function KanbanBoard({ id, children }) {
 
 export function KanbanHeader({ children }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 rounded-t-xl rounded-b-xl mb-4 bg-white border border-gray-100 shadow-sm">
+    <div className="flex items-center px-4 py-3 bg-[#232323] border-b border-[#333333]">
       {children}
     </div>
   );
@@ -57,10 +54,9 @@ export function KanbanHeader({ children }) {
 
 export function KanbanCards({ id, children }) {
   const { data } = useContext(KanbanContext);
-  // Match the items belonging to this column ID
   const columnData = data.filter(item => item.column === id);
   return (
-    <div className="flex-1 overflow-y-auto pr-1 pb-4 flex flex-col gap-3 custom-scrollbar">
+    <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-2 custom-scrollbar bg-[#232323]">
       {columnData.map(item => children(item))}
     </div>
   );
@@ -72,7 +68,7 @@ export function KanbanCard({ id, children }) {
     <div
       draggable
       onDragStart={(e) => handleDragStart(e, id)}
-      className="bg-white p-4 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] border border-gray-50 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing flex flex-col gap-3"
+      className="bg-[#191919] p-4 rounded-md border border-[#333333] hover:border-[#444444] transition-colors cursor-grab active:cursor-grabbing flex flex-col gap-3"
     >
       {children}
     </div>
