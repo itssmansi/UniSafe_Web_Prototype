@@ -83,10 +83,10 @@ export default function KanbanPage({ onBack }) {
             return (
               <div key={col.id} className="w-[320px] h-full flex flex-col flex-shrink-0">
                 {/* Column Header */}
-                <div className={lex items-center justify-between px-4 py-3 rounded-t-xl rounded-b-xl mb-4 \}>
+                <div className={`flex items-center justify-between px-4 py-3 rounded-t-xl rounded-b-xl mb-4 ${col.bgColor}`}>
                   <div className="flex items-center gap-2">
-                    <div className={w-2 h-2 rounded-full \}></div>
-                    <span className={ont-semibold text-sm \}>{col.name}</span>
+                    <div className={`w-2 h-2 rounded-full ${col.dotColor}`}></div>
+                    <span className={`font-semibold text-sm ${col.textColor}`}>{col.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="bg-white text-gray-500 text-[11px] font-medium px-2 py-0.5 rounded-full shadow-sm">

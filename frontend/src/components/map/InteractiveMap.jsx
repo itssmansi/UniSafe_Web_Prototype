@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
 
 // Create custom category icons based on the UI screenshot
 const createCategoryIcon = (color, svgPath) => {
-  const svg = <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="12" fill="\"/><path d="\" fill="white" transform="scale(0.6) translate(8, 8)"/></svg>;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="12" fill="${color}"/><path d="${svgPath}" fill="white" transform="scale(0.6) translate(8, 8)"/></svg>`;
   return L.divIcon({
     html: svg,
     className: 'custom-leaflet-icon',
