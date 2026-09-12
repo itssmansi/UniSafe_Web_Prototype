@@ -84,7 +84,7 @@ export default function HotspotDetails({ zone, onClose }) {
         {isAuthority && (
           <div className="mt-3 pt-3 border-t border-amber-100 bg-amber-50/60 p-2.5 rounded-lg border">
             <p className="text-[11px] font-bold text-[#D97706] uppercase tracking-wider flex items-center gap-1">
-              <span>⚠ Authority Priority Notice</span>
+              <span>Authority Priority Notice</span>
             </p>
             <p className="text-[11px] text-gray-600 mt-0.5 leading-tight">
               {severity === 'HIGH'

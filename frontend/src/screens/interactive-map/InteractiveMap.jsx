@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { supabase } from '../../services/supabase';
 import { useNavigate } from 'react-router-dom';
+import { useSmartBack } from '../../hooks/useSmartBack';
 
 // --- Configuration & Constants ---
 const CATEGORIES_CONFIG = {
@@ -116,6 +117,7 @@ const MapController = ({ step, pinLocation, setPinLocation, setMapInstance, drag
 
 const InteractiveMap = () => {
   const navigate = useNavigate();
+  const goBack = useSmartBack('/home');
   const defaultCenter = [19.107, 72.837]; 
   const [mapInstance, setMapInstance] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
@@ -411,7 +413,12 @@ const InteractiveMap = () => {
 
       {/* TOP BAR */}
       <div className="absolute top-[12px] left-[16px] right-[16px] z-[1000] flex gap-3 pointer-events-auto">
-        <button onClick={() => navigate(-1)} className="w-[54px] h-[54px] shrink-0 bg-white/90 backdrop-blur-xl rounded-full shadow-[0_8px_20px_rgba(0,0,0,0.12)] border border-white/80 flex items-center justify-center focus:outline-none hover:bg-white active:scale-95 transition-all">
+        <button 
+          onClick={() => goBack('/home')} 
+          title="Back"
+          aria-label="Back to Home"
+          className="w-[54px] h-[54px] shrink-0 bg-white/90 backdrop-blur-xl rounded-full shadow-[0_8px_20px_rgba(0,0,0,0.12)] border border-white/80 flex items-center justify-center focus:outline-none hover:bg-white active:scale-95 transition-all cursor-pointer"
+        >
           <svg className="w-[24px] h-[24px] text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
         </button>
         
@@ -426,7 +433,7 @@ const InteractiveMap = () => {
               placeholder="Search location..." 
               className="bg-transparent border-none outline-none w-full text-slate-800 placeholder-slate-400 text-[15px] font-semibold h-full pr-8" 
             />
-            {isSearching ? (
+              {isSearching ? (
               <svg className="animate-spin h-5 w-5 text-slate-400 absolute right-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -458,6 +465,15 @@ const InteractiveMap = () => {
             </div>
           )}
         </div>
+
+        <button 
+          onClick={() => navigate('/verify')}
+          title="Citizen Verification Hub"
+          className="h-[54px] px-4 bg-white/90 backdrop-blur-xl rounded-[27px] shadow-[0_8px_20px_rgba(0,0,0,0.12)] border border-white/80 flex items-center gap-2 text-slate-700 hover:text-blue-600 hover:bg-white active:scale-95 transition-all text-xs md:text-sm font-bold shrink-0"
+        >
+          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span className="hidden sm:inline">Verify Fixes</span>
+        </button>
       </div>
 
       {/* STATE: IDLE */}

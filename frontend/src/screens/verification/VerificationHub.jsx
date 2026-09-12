@@ -1,7 +1,9 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSmartBack } from '../../hooks/useSmartBack';
 
 export default function VerificationHub() {
+  const goBack = useSmartBack('/home');
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,6 +29,25 @@ export default function VerificationHub() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => goBack('/home')} 
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
+                title="Go Back"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                Back
+              </button>
+              <span className="text-gray-300">|</span>
+              <Link to="/map" className="text-xs font-semibold text-blue-600 hover:underline">
+                View Map
+              </Link>
+            </div>
+            <span className="text-xs bg-blue-100 text-blue-800 font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+              Citizen Portal
+            </span>
+          </div>
           <h2 className="text-3xl font-bold text-gray-900">Citizen Verification Hub</h2>
           <p className="mt-2 text-gray-600">
             Help maintain transparency! These issues have been marked as resolved by authorities. We need citizens like you to confirm the fixes on-site.
@@ -51,21 +72,25 @@ export default function VerificationHub() {
             {tasks.map(task => (
               <Link 
                 key={task.id}
-                to={/verify/}
-                className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all border border-gray-100"
+                to={`/verify/${task.id}`}
+                className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all border border-gray-100 group block cursor-pointer"
               >
                 <div className="h-48 bg-gray-100 relative">
                   <img src={task.authority_image_url} alt="Authority Fix" className="w-full h-full object-cover" />
-                  <div className="absolute top-3 right-3 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                  <div className="absolute top-3 right-3 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
                     Needs Verification
                   </div>
                 </div>
                 <div className="p-5">
-                  <h3 className="font-bold text-lg text-gray-900 mb-1">{task.zone_type || 'Unknown Zone'}</h3>
-                  <p className="text-sm text-gray-500">Reported on {new Date(task.created_at).toLocaleDateString()}</p>
-                  <div className="mt-4 flex items-center text-blue-600 font-semibold text-sm">
+                  <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">{task.zone_type || 'Unknown Zone'}</h3>
+                  <p className="text-sm text-gray-500">
+                    {task.created_at && !isNaN(new Date(task.created_at).getTime()) 
+                      ? `Reported on ${new Date(task.created_at).toLocaleDateString()}` 
+                      : 'Active Hotspot Zone'}
+                  </p>
+                  <div className="mt-4 flex items-center text-blue-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
                     Verify Now
-                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7 -7 7"></path></svg>
+                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7 -7 7"></path></svg>
                   </div>
                 </div>
               </Link>

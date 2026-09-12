@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSmartBack } from '../../hooks/useSmartBack';
 import ResolutionModal from './ResolutionModal';
 
 // --- Configuration & Data ---
@@ -15,32 +17,58 @@ const Card = ({ task, isDragging, onPointerDown }) => (
     className={`bg-white rounded-[12px] p-3 md:p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 cursor-grab active:cursor-grabbing select-none transition-opacity ${isDragging ? 'opacity-30' : 'opacity-100 hover:shadow-[0_6px_16px_rgba(0,0,0,0.06)]'}`}
     onPointerDown={onPointerDown}
   >
-    <div className="flex justify-between items-start mb-3 md:mb-4">
-      <h4 className="font-medium text-[#111827] text-[12.5px] md:text-[15px] leading-snug pr-2 md:pr-4">
+    <div className="flex justify-between items-start mb-2">
+      <h4 className="font-semibold text-[#111827] text-[13px] md:text-[15px] leading-snug pr-2">
         {task.title}
       </h4>
-      <div className="w-[18px] h-[18px] md:w-[24px] md:h-[24px] rounded-full bg-gray-200 shrink-0"></div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {(task.upvote_count !== undefined && task.upvote_count > 0) && (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full shadow-xs" title="Community Upvotes">
+            ▲ {task.upvote_count}
+          </span>
+        )}
+        <div 
+          className={`w-3.5 h-3.5 rounded-full shrink-0 ${task.severity === 'HIGH' ? 'bg-red-500 shadow-sm shadow-red-500/50' : task.severity === 'MEDIUM' ? 'bg-amber-400' : 'bg-gray-200'}`}
+          title={`Severity: ${task.severity || 'LOW'}`}
+        ></div>
+      </div>
     </div>
-    <div className="flex justify-between items-center mt-2">
-      <p className="text-[9px] md:text-[12px] font-medium text-gray-400">
+
+    {task.description && (
+      <p className="text-[11px] text-gray-500 line-clamp-2 mb-2.5 font-normal leading-relaxed">
+        {task.description}
+      </p>
+    )}
+
+    <div className="flex justify-between items-center mt-1 border-t border-gray-50 pt-2">
+      <p className="text-[9px] md:text-[11px] font-medium text-gray-400">
         {task.date}
       </p>
       {task.column === 'in-review' && (
-        <a 
-          href={`/verify/${task.id}`} 
-          target="_blank" 
-          rel="noreferrer"
-          className="text-[10px] md:text-[11px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-100"
-          onPointerDown={(e) => e.stopPropagation()}
+        <span 
+          className="text-[10px] md:text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-full flex items-center gap-1.5 select-none"
+          title="Awaiting citizen verification"
         >
-          Verify
-        </a>
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+          Awaiting Citizen
+        </span>
+      )}
+      {task.column === 'done' && (
+        <span 
+          className="text-[10px] md:text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1 select-none"
+          title="Verified by citizens"
+        >
+          <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+          Verified
+        </span>
       )}
     </div>
   </div>
 );
 
-export default function KanbanBoard() {
+export default function KanbanBoard({ hideHeader = false }) {
+  const navigate = useNavigate();
+  const goBack = useSmartBack('/authority');
   const [tasks, setTasks] = useState([]);
   
   // Drag & Drop State
@@ -66,12 +94,19 @@ export default function KanbanBoard() {
       const res = await fetch('/api/kanban/tasks');
       const data = await res.json();
       if (Array.isArray(data)) {
-        const formattedTasks = data.map(zone => ({
-          id: zone.id,
-          title: zone.zone_type || 'Unknown Zone',
-          date: new Date(zone.created_at || Date.now()).toLocaleDateString(),
-          column: zone.status || 'planned',
-          original: zone
+        const formattedTasks = data.map(item => ({
+          id: item.id,
+          title: item.title || item.category || 'Civic Issue',
+          description: item.description || '',
+          date: item.created_at && !isNaN(new Date(item.created_at).getTime())
+            ? new Date(item.created_at).toLocaleDateString()
+            : 'Recent',
+          created_at: item.created_at,
+          column: item.status || 'planned',
+          upvote_count: item.upvote_count || 0,
+          severity: item.severity || 'LOW',
+          authority_image_url: item.authority_image_url || item.image_url,
+          original: item
         }));
         setTasks(formattedTasks);
       }
@@ -130,7 +165,9 @@ export default function KanbanBoard() {
         const currentTask = draggingTaskRef.current;
         
         if (targetCol && targetCol !== currentTask.column) {
-          if (targetCol === 'in-review') {
+          if (targetCol === 'done') {
+            alert("Only citizens can verify and close resolutions. Move the task to 'In Review' with proof to request citizen verification.");
+          } else if (targetCol === 'in-review') {
             setResolutionModalTask(currentTask);
           } else {
             updateTaskStatus(currentTask.id, targetCol);
@@ -198,40 +235,60 @@ export default function KanbanBoard() {
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       `}} />
 
-      {/* Header matching the phone screenshot */}
-      <div className="flex items-center justify-between p-4 bg-[#F9FAFB] relative md:mb-4 max-w-7xl mx-auto w-full">
-        <a href="/" className="p-2 hover:bg-gray-200 rounded-full transition-colors flex items-center gap-1 text-sm font-medium text-gray-700">
-          <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="hidden sm:inline">Home</span>
-        </a>
-        <h1 className="text-[18px] md:text-[24px] font-bold text-gray-900 absolute left-1/2 -translate-x-1/2">Kanban Board</h1>
-        <a href="/verify" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors">
-          Verify Page
-        </a>
-      </div>
+      {/* Header matching the phone screenshot (only on standalone route) */}
+      {!hideHeader && (
+        <div className="flex items-center justify-between py-3 px-4 sm:px-6 bg-[#F9FAFB] relative w-full mb-2">
+          <button 
+            onClick={() => goBack('/authority')} 
+            title="Back"
+            aria-label="Back"
+            className="p-2 hover:bg-gray-200 rounded-full transition-colors flex items-center gap-1 text-sm font-medium text-gray-700 z-10 cursor-pointer"
+          >
+            <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="hidden sm:inline">Back</span>
+          </button>
+          <h1 className="text-[18px] md:text-[22px] font-bold text-gray-900 absolute left-1/2 -translate-x-1/2 pointer-events-none">Kanban Board</h1>
+          <button 
+            onClick={() => navigate('/authority')} 
+            className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors z-10 cursor-pointer"
+          >
+            Dashboard
+          </button>
+        </div>
+      )}
       
-      {/* Grid Layout: 2x2 on Mobile, 4x1 Flex on Desktop */}
-      <div className="grid grid-cols-2 md:flex md:flex-row gap-3 md:gap-6 overflow-x-hidden md:overflow-x-auto pb-8 flex-1 hide-scroll items-start px-3 md:px-8 max-w-7xl mx-auto w-full">
+      {/* 4 Columns Layout: 1 col on mobile, 2 on tablet, all 4 fully visible on desktop */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 pb-6 flex-1 items-start px-3 sm:px-6 w-full h-[calc(100vh-80px)]">
         {COLUMNS.map(col => {
-          const columnTasks = tasks.filter(t => t.column === col.id);
+          const columnTasks = tasks
+            .filter(t => t.column === col.id)
+            .sort((a, b) => {
+              // 1. Primary sort: Upvotes descending (highest priority goes UP)
+              const upvoteDiff = (b.upvote_count || 0) - (a.upvote_count || 0);
+              if (upvoteDiff !== 0) return upvoteDiff;
+              // 2. Secondary sort: Newest first
+              const dateA = new Date(a.created_at || a.date || 0).getTime() || 0;
+              const dateB = new Date(b.created_at || b.date || 0).getTime() || 0;
+              return dateB - dateA;
+            });
           const isHovered = hoveredCol === col.id;
 
           return (
             <div 
               key={col.id} 
-              className="w-full md:w-[320px] md:shrink-0 h-[45vh] md:h-[calc(100vh-140px)] flex flex-col rounded-[16px] border transition-colors duration-200" 
+              className="w-full min-w-0 h-[calc(100vh-100px)] flex flex-col rounded-[16px] border transition-colors duration-200 overflow-hidden" 
               style={{ backgroundColor: isHovered ? col.border : col.bg, borderColor: col.border }}
             >
               {/* Header */}
-              <div className="p-2.5 md:p-4 md:px-5 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-1.5 md:gap-3 overflow-hidden">
-                  <div className="w-1.5 h-1.5 md:w-2.5 md:h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: col.dot }}></div>
-                  <h3 className="font-bold text-gray-900 text-[13px] md:text-[15px] truncate">{col.title}</h3>
+              <div className="p-2.5 md:p-3 px-3.5 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <div className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: col.dot }}></div>
+                  <h3 className="font-bold text-gray-900 text-[13px] md:text-[14px] truncate">{col.title}</h3>
                 </div>
-                <div className="flex items-center gap-1 md:gap-2 shrink-0 ml-1">
-                  <div className="bg-white px-1.5 md:px-2 py-0.5 rounded-[6px] text-[10px] md:text-[13px] font-bold shadow-sm border border-gray-100/50 flex items-center justify-center min-w-[20px]" style={{ color: col.dot }}>
+                <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                  <div className="bg-white px-2 py-0.5 rounded-[6px] text-[11px] font-bold shadow-xs border border-gray-100/60 flex items-center justify-center min-w-[22px]" style={{ color: col.dot }}>
                     {columnTasks.length}
                   </div>
                 </div>
@@ -239,12 +296,12 @@ export default function KanbanBoard() {
               
               {/* Body */}
               <div 
-                className="flex-1 p-2 md:p-3 md:px-4 pt-0 flex flex-col gap-2 md:gap-3 overflow-y-auto hide-scroll pb-10" 
+                className="flex-1 p-2 md:p-2.5 pt-0 flex flex-col gap-2 overflow-y-auto hide-scroll pb-8" 
                 data-column-id={col.id}
               >
                 {columnTasks.map(task => (
                   <Card 
-                    tey={task.id} 
+                    key={task.id} 
                     task={task} 
                     isDragging={draggingTask?.id === task.id} 
                     onPointerDown={(e) => handlePointerDown(e, task)}

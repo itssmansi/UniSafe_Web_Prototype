@@ -1,6 +1,8 @@
 import requests
+import pandas as pd
 from flask import Blueprint, request, jsonify
-from app.services.notification_service import get_supabase_headers, get_supabase_url, log_complaint_action, create_notification
+
+from app.services.notification_service import get_supabase_headers, get_supabase_url, log_complaint_action
 from app.services.email_service import (
     send_status_in_progress_email, 
     send_resolved_email,
@@ -8,6 +10,17 @@ from app.services.email_service import (
     send_threshold_authority_email
 )
 from app.services.authority_assignment_service import assign_complaint_authority
+from app.notifications.events import (
+    notify_complaint_submitted, 
+    notify_status_changed, 
+    notify_threshold_reached,
+    notify_complaint_assigned,
+    notify_complaint_reopened,
+    notify_critical_complaint
+)
+
+from app.heatmap.processor import process_heatmap_pipeline
+from app.heatmap.persistence import persist_heatmap_results
 
 complaints_api = Blueprint("complaints_api", __name__)
 
@@ -28,11 +41,39 @@ def _update(table, id_val, payload):
     try:
         resp = requests.patch(url, headers=get_supabase_headers(), json=payload)
         if resp.status_code in [200, 204]:
-            # Fetch updated row
             return _fetch_one(table, "id", id_val)
     except Exception as e:
         print(f"Error updating {table}: {e}")
     return None
+
+def trigger_heatmap_update(triggering_complaint=None):
+    try:
+        url = f"{get_supabase_url()}/rest/v1/complaints?select=*"
+        resp = requests.get(url, headers=get_supabase_headers())
+        if resp.status_code == 200:
+            complaints = resp.json()
+            if complaints:
+                df = pd.DataFrame(complaints)
+                pipeline_output = process_heatmap_pipeline(df)
+                
+                # Simple duplicate prevention for critical complaints:
+                # Only notify if the triggering complaint itself just landed in a high-risk zone
+                if triggering_complaint:
+                    t_id = triggering_complaint.get("id")
+                    zone_id = None
+                    for dp in pipeline_output.get("heatmap_data_points", []):
+                        if dp.get("source_id") == t_id:
+                            zone_id = dp.get("heatmap_zone_id")
+                            break
+                    if zone_id:
+                        for z in pipeline_output.get("heatmap_zones", []):
+                            if z.get("id") == zone_id and z.get("risk_score", 0) >= 60:
+                                notify_critical_complaint(triggering_complaint, z.get("risk_score"))
+                                break
+
+                persist_heatmap_results(pipeline_output)
+    except Exception as e:
+        print(f"Heatmap update failed: {e}")
 
 @complaints_api.route("", methods=["POST"])
 @complaints_api.route("/", methods=["POST"])
@@ -41,7 +82,6 @@ def create_complaint():
     if not data:
         return jsonify({"error": "No data provided"}), 400
         
-    # Provide defaults for missing fields from Pranav's map
     payload = {
         "description": data.get("description", ""),
         "category": data.get("category", "General"),
@@ -50,8 +90,12 @@ def create_complaint():
         "image_url": data.get("image_url"),
         "status": "pending",
         "upvote_count": 0,
-        "jurisdiction": data.get("jurisdiction", "Mumbai North") # Default for hackathon
+        "jurisdiction": data.get("jurisdiction", "Mumbai North")
     }
+    
+    payload["status"] = data.get("status", "pending")
+    if "citizen_id" in data:
+        payload["citizen_id"] = data["citizen_id"]
     
     url = f"{get_supabase_url()}/rest/v1/complaints"
     headers = get_supabase_headers()
@@ -64,18 +108,19 @@ def create_complaint():
             
         complaint = resp.json()[0] if isinstance(resp.json(), list) else resp.json()
         
-        # Trigger Assignment Engine automatically!
+        # Notify citizen
+        notify_complaint_submitted(complaint)
+        
+        # Trigger Assignment Engine automatically
         assign_result = assign_complaint_authority(complaint)
         print(f"Auto-assignment result: {assign_result}")
+        if assign_result and assign_result.get("assigned"):
+            complaint["assigned_authority_id"] = assign_result.get("authority_id")
+            notify_complaint_assigned(complaint)
         
-        # Notify citizen
-        create_notification(
-            title="Complaint Submitted",
-            body=f"Your complaint '{complaint.get('category', 'Complaint')}' has been successfully submitted.",
-            citizen_id=complaint.get("citizen_id")
-        )
+        # Trigger Heatmap ML Pipeline
+        trigger_heatmap_update(triggering_complaint=complaint)
         
-        # Return the complaint (Frontend expects this format)
         return jsonify(complaint), 200
         
     except Exception as e:
@@ -95,33 +140,33 @@ def update_status(complaint_id):
         authority = _fetch_one("authorities", "id", authority_id)
         if not authority:
             return jsonify({"error": "Authority not found"}), 404
+            
+        old_complaint = _fetch_one("complaints", "id", complaint_id)
+        if not old_complaint:
+            return jsonify({"error": "Complaint not found"}), 404
+        old_status = old_complaint.get("status")
+        
+        if (old_status or "").strip().lower() == new_status.strip().lower():
+            return jsonify({"success": True, "complaint": old_complaint, "message": "Status unchanged"})
         
         complaint = _update("complaints", complaint_id, {"status": new_status})
         if not complaint:
-            return jsonify({"error": "Complaint not found or update failed"}), 404
+            return jsonify({"error": "Update failed"}), 404
         
         citizen = _fetch_one("citizens", "id", complaint.get("citizen_id")) if complaint.get("citizen_id") else None
                 
         msg = f"Complaint moved to {new_status}"
         log_complaint_action(complaint_id, authority_id, "STATUS_CHANGED", msg)
         
-        if new_status == "in_progress":
-            create_notification(
-                title="Complaint In Progress",
-                body=f"Your complaint '{complaint.get('category', 'Complaint')}' is now in progress.",
-                citizen_id=citizen["id"] if citizen else None
-            )
-            if citizen:
-                send_status_in_progress_email(citizen, complaint, authority.get("department", "Authority"))
-                
-        elif new_status == "resolved":
-            create_notification(
-                title="Complaint Resolved",
-                body=f"Your complaint '{complaint.get('category', 'Complaint')}' has been resolved.",
-                citizen_id=citizen["id"] if citizen else None
-            )
-            if citizen:
-                send_resolved_email(citizen, complaint, authority.get("department", "Authority"))
+        if new_status.lower() == "reopened":
+            notify_complaint_reopened(complaint, old_status, new_status)
+        else:
+            notify_status_changed(complaint, old_status, new_status)
+        
+        if new_status == "in_progress" and citizen:
+            send_status_in_progress_email(citizen, complaint, authority.get("department", "Authority"))
+        elif new_status == "resolved" and citizen:
+            send_resolved_email(citizen, complaint, authority.get("department", "Authority"))
                 
         return jsonify({"success": True, "complaint": complaint})
         
@@ -143,24 +188,16 @@ def upvote_complaint(complaint_id):
         if not updated_complaint:
             return jsonify({"error": "Failed to update upvotes"}), 500
             
+        notify_threshold_reached(updated_complaint, previous_count)
+            
         if previous_count < COMMUNITY_THRESHOLD and new_count >= COMMUNITY_THRESHOLD:
             citizen = _fetch_one("citizens", "id", updated_complaint.get("citizen_id")) if updated_complaint.get("citizen_id") else None
             if citizen:
                 send_threshold_citizen_email(citizen, updated_complaint)
-                create_notification(
-                    title="Community Threshold Reached",
-                    body=f"Your complaint '{updated_complaint.get('category', 'Complaint')}' has been escalated.",
-                    citizen_id=citizen["id"]
-                )
             
             authority = _fetch_one("authorities", "id", updated_complaint.get("assigned_authority_id")) if updated_complaint.get("assigned_authority_id") else None
             if authority:
                 send_threshold_authority_email(authority, updated_complaint)
-                create_notification(
-                    title="Critical Threshold Escalation",
-                    body=f"Complaint '{updated_complaint.get('category', 'Complaint')}' reached the community threshold.",
-                    authority_id=authority["id"]
-                )
                     
         return jsonify({"success": True, "upvote_count": new_count})
         
@@ -170,14 +207,15 @@ def upvote_complaint(complaint_id):
 @complaints_api.route("/<complaint_id>/assign", methods=["POST"])
 def assign_authority(complaint_id):
     try:
-        # Fetch the complaint
         complaint = _fetch_one("complaints", "id", complaint_id)
         if not complaint:
             return jsonify({"error": "Complaint not found"}), 404
             
-        # Execute assignment logic
         result = assign_complaint_authority(complaint)
-        
+        if result.get("assigned"):
+            complaint["assigned_authority_id"] = result.get("authority_id")
+            notify_complaint_assigned(complaint)
+            
         return jsonify(result), 200 if result.get("assigned") else 400
         
     except Exception as e:

@@ -1,6 +1,5 @@
-"use client";
-
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, type Variants } from "motion/react";
 import { ArrowRight, ArrowDown, Play, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -71,11 +70,23 @@ export function Hero2({
     signInHref = "/auth",
     className,
 }: Hero2Props) {
+    const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
     const [activeLink, setActiveLink] = useState<string | null>(
         navLinks.find((link) => link.active)?.label || navLinks[0]?.label || null
     );
+
+    const handleNavClick = (e: React.MouseEvent, href?: string) => {
+        if (!href || href === "#") {
+            e.preventDefault();
+            return;
+        }
+        if (href.startsWith("/")) {
+            e.preventDefault();
+            navigate(href);
+        }
+    };
 
     const itemVariants: Variants = {
         hidden: { opacity: 0, y: 15 },
@@ -102,7 +113,7 @@ export function Hero2({
             <div className="w-full max-w-[1440px] mx-auto relative z-50">
                 <header className="flex items-center justify-between px-6 md:px-10 lg:px-16 xl:px-24 py-6 md:py-8">
                     {/* Brand Logo */}
-                    <a href="/" className="flex items-center gap-1 group">
+                    <a href="/" onClick={(e) => handleNavClick(e, "/")} className="flex items-center gap-1 group cursor-pointer">
                         {typeof brand === "string" ? (
                             <span className="relative text-unisafe-dark-midnight-blue font-bold text-xl tracking-tight select-none">
                                 {brand}
@@ -125,11 +136,11 @@ export function Hero2({
                                     <a
                                         href={link.href}
                                         onClick={(e) => {
-                                            if (link.href === "#") e.preventDefault();
+                                            handleNavClick(e, link.href);
                                             setActiveLink(link.label);
                                         }}
                                         className={cn(
-                                            "text-sm font-medium transition-colors flex items-center gap-1.5",
+                                            "text-sm font-medium transition-colors flex items-center gap-1.5 cursor-pointer",
                                             (hoveredLink === link.label || (!hoveredLink && activeLink === link.label)) ? "text-unisafe-dark-midnight-blue font-semibold" : "text-unisafe-midnight-blue/70 hover:text-unisafe-dark-midnight-blue"
                                         )}
                                     >
@@ -142,7 +153,7 @@ export function Hero2({
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 pt-4 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
                                             <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-2 min-w-[180px] flex flex-col gap-1">
                                                 {link.dropdownItems.map((item) => (
-                                                    <a key={item.label} href={item.href} className="text-sm font-medium text-unisafe-midnight-blue hover:text-unisafe-dark-midnight-blue hover:bg-unisafe-smoke-white px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap text-center">
+                                                    <a key={item.label} href={item.href} onClick={(e) => handleNavClick(e, item.href)} className="text-sm font-medium text-unisafe-midnight-blue hover:text-unisafe-dark-midnight-blue hover:bg-unisafe-smoke-white px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap text-center cursor-pointer">
                                                         {item.label}
                                                     </a>
                                                 ))}
@@ -165,7 +176,7 @@ export function Hero2({
                     {/* Desktop Actions */}
                     <div className="hidden md:flex items-center gap-4">
                         {headerActions || (
-                            <a href={signInHref}>
+                            <a href={signInHref} onClick={(e) => handleNavClick(e, signInHref)}>
                                 <Button variant="outline" className="rounded-full px-7 h-10 text-sm font-medium bg-white/60 backdrop-blur-md shadow-[0_0_0_1px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8),0_1px_2px_rgba(0,0,0,0.04),0_2px_4px_rgba(0,0,0,0.02)] hover:text-black hover:bg-white/80 transition-all text-unisafe-dark-midnight-blue border-0 cursor-pointer">
                                     {signInLabel}
                                 </Button>
@@ -203,12 +214,12 @@ export function Hero2({
                                     key={link.label}
                                     href={link.href}
                                     onClick={(e) => {
-                                        if (link.href === "#") e.preventDefault();
+                                        handleNavClick(e, link.href);
                                         setActiveLink(link.label);
                                         setIsMobileMenuOpen(false);
                                     }}
                                     className={cn(
-                                        "text-2xl font-semibold flex items-center gap-2",
+                                        "text-2xl font-semibold flex items-center gap-2 cursor-pointer",
                                         activeLink === link.label ? "text-unisafe-dark-midnight-blue" : "text-unisafe-midnight-blue/70"
                                     )}
                                 >
@@ -217,7 +228,7 @@ export function Hero2({
                             ))}
                         </nav>
                         <div className="mt-auto">
-                            <a href={signInHref} onClick={() => setIsMobileMenuOpen(false)}>
+                            <a href={signInHref} onClick={(e) => { handleNavClick(e, signInHref); setIsMobileMenuOpen(false); }}>
                                 <Button className="w-full rounded-full bg-unisafe-teal hover:opacity-90 text-white h-12 text-base cursor-pointer shadow-md">
                                     {signInLabel}
                                 </Button>
@@ -250,14 +261,14 @@ export function Hero2({
                     </motion.p>
 
                     <motion.div variants={itemVariants} className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                        <a href={primaryCtaHref}>
+                        <a href={primaryCtaHref} onClick={(e) => handleNavClick(e, primaryCtaHref)}>
                             <Button className="rounded-full px-8 bg-unisafe-teal hover:brightness-105 text-white h-12 text-sm md:text-base font-medium shadow-[0_0_0_1px_rgba(0,0,0,0.05),inset_0_1px_1px_rgba(255,255,255,0.3),0_4px_16px_rgba(0,0,0,0.1)] border-0 transition-all group cursor-pointer w-full sm:w-auto">
                                 {primaryCtaLabel}
                                 <ArrowRight className="w-4 h-4 ml-1.5 transition-transform group-hover:translate-x-1" />
                             </Button>
                         </a>
 
-                        <a href={secondaryCtaHref}>
+                        <a href={secondaryCtaHref} onClick={(e) => handleNavClick(e, secondaryCtaHref)}>
                             <Button variant="secondary" className="rounded-full px-8 bg-[#eaeff1]/80 hover:bg-[#eaeff1] backdrop-blur-sm shadow-[0_0_0_1px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9),0_2px_4px_rgba(0,0,0,0.02)] text-unisafe-dark-midnight-blue h-12 text-sm md:text-base font-medium border-0 transition-all cursor-pointer w-full sm:w-auto">
                                 {secondaryCtaLabel}
                                 <Play className="w-3.5 h-3.5 ml-2 fill-unisafe-dark-midnight-blue" />

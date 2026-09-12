@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
+import { useSmartBack } from '../../hooks/useSmartBack';
 
 export default function ResolutionVerification() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const goBack = useSmartBack('/verify');
 
   const [zone, setZone] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,14 +17,31 @@ export default function ResolutionVerification() {
   useEffect(() => {
     const fetchZone = async () => {
       try {
-        const { data, error } = await supabase
-          .from('heatmap_zones')
-          .select('*')
-          .eq('id', id)
-          .single();
-        
-        if (error) throw error;
-        setZone(data);
+        let zoneData = null;
+        try {
+          const { data, error } = await supabase
+            .from('heatmap_zones')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (!error && data) {
+            zoneData = data;
+          }
+        } catch (sErr) {
+          console.warn("Supabase fetch notice:", sErr);
+        }
+
+        // Fallback to API if Supabase query fails or returns empty
+        if (!zoneData) {
+          const res = await fetch('/api/kanban/tasks');
+          const allTasks = await res.json();
+          if (Array.isArray(allTasks)) {
+            zoneData = allTasks.find(t => t.id === id) || null;
+          }
+        }
+
+        setZone(zoneData);
       } catch (err) {
         console.error("Cannot fetch zone: ", err);
       } finally {
@@ -76,16 +95,39 @@ export default function ResolutionVerification() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
-  
+  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8 text-gray-500 font-semibold">Loading resolution details...</div>;
+
+  if (!zone) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center border border-gray-100">
+          <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-800">Resolution Not Found</h2>
+          <p className="text-gray-500 text-sm mt-2">This issue may have already been verified and closed, or the link is invalid.</p>
+          <button onClick={() => goBack('/verify')} className="mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors cursor-pointer">
+            Back to Verification Hub
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
         
         <div className="p-6 border-b border-gray-100 bg-gray-800 text-white">
-          <h2 className="text-2xl font-bold">Resolution Verification</h2>
-          <p className="opacity-80 text-sm mt-1">Please confirm if this issue is fixed.</p>
+          <button 
+            onClick={() => goBack('/verify')} 
+            className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-300 hover:text-white transition-colors cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            Back to Verification Hub
+          </button>
+          <h2 className="text-2xl font-bold">Citizen Resolution Review</h2>
+          <p className="opacity-80 text-sm mt-1">Inspect the authority's proof and verify if this issue is genuinely resolved.</p>
         </div>
 
         <div className="p-6">

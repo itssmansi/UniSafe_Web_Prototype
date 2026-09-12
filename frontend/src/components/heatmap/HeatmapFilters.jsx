@@ -4,12 +4,16 @@ export default function HeatmapFilters({
   categories = [],
   selectedCategory,
   setSelectedCategory,
+  subcategories = [],
+  selectedSubcategory,
+  setSelectedSubcategory,
   selectedSeverity,
   setSelectedSeverity,
-  onClearFilters
+  onClearFilters,
+  uiStyle = 'sidebar'
 }) {
   const severities = ['All', 'LOW', 'MEDIUM', 'HIGH'];
-  const hasActiveFilters = selectedCategory !== 'All' || selectedSeverity !== 'All';
+  const hasActiveFilters = selectedCategory !== 'all' || (selectedSubcategory && selectedSubcategory !== 'all') || selectedSeverity !== 'All';
 
   return (
     <div className="bg-white border border-gray-200 rounded-[16px] p-5 shadow-sm space-y-4 font-sans w-full">
@@ -28,26 +32,59 @@ export default function HeatmapFilters({
         )}
       </div>
 
-      {/* Category Dropdown (44px height) */}
+      {/* Main Category Selection */}
       <div>
         <label className="text-[11px] font-semibold text-[#64748B] block mb-1">
-          Category
+          Problem Category
         </label>
         <select
           value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
+          onChange={(e) => {
+            setSelectedCategory(e.target.value);
+            if (setSelectedSubcategory) {
+              setSelectedSubcategory('all');
+            }
+          }}
           className="bg-[#F7F8F4] border border-[#EBE6DF] text-[#0B192C] text-xs font-semibold rounded-xl px-3 h-11 focus:outline-none focus:ring-1 focus:ring-[#0B192C] transition w-full cursor-pointer"
         >
-          <option value="All">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </option>
-          ))}
+          {categories.map((cat) => {
+            const val = typeof cat === 'object' ? cat.id : cat;
+            const label = typeof cat === 'object' ? cat.label : cat.charAt(0).toUpperCase() + cat.slice(1);
+            const count = typeof cat === 'object' && cat.count !== undefined ? ` (${cat.count})` : '';
+            return (
+              <option key={val} value={val}>
+                {label}{count}
+              </option>
+            );
+          })}
         </select>
       </div>
 
-      {/* Severity Level Segmented Control (40px height) */}
+      {/* Specific Subcategory Dropdown (Cascading) */}
+      {selectedCategory !== 'all' && subcategories && subcategories.length > 0 && (
+        <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+          <label className="text-[11px] font-semibold text-[#64748B] block mb-1">
+            Sub-Category
+          </label>
+          <select
+            value={selectedSubcategory}
+            onChange={(e) => setSelectedSubcategory(e.target.value)}
+            className="bg-[#F7F8F4] border border-[#EBE6DF] text-[#0B192C] text-xs font-semibold rounded-xl px-3 h-11 focus:outline-none focus:ring-1 focus:ring-[#0B192C] transition w-full cursor-pointer"
+          >
+            <option value="all">
+              All {categories.find((c) => c.id === selectedCategory)?.label || 'Issues'} (
+              {categories.find((c) => c.id === selectedCategory)?.count || 0})
+            </option>
+            {subcategories.map((sub) => (
+              <option key={sub.id} value={sub.id}>
+                {sub.label} ({sub.count})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Severity Level Segmented Control */}
       <div>
         <label className="text-[11px] font-semibold text-[#64748B] block mb-1">
           Severity Level
